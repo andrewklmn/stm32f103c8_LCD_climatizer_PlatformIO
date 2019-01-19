@@ -104,14 +104,14 @@ void loop() {
 
         screen1.setCursor(0,2);
         if (temperature == 0 && humidity == 0) {
-          screen1.print(" Temp Sensor Error!");
+          screen1.print(" DHT11 Sensor Error!");
           heater = 0;
           water = 0;
-        } else if (temperature >= target_temp && humidity >= target_humidity) {
+        } else if (temperature > target_temp && humidity > target_humidity) {
           screen1.print(" Comfort condition  ");
           heater = 0;
           water = 0;
-        } else if (temperature >= target_temp && humidity < target_humidity) {
+        } else if (temperature > target_temp && humidity < target_humidity) {
           screen1.print("      Too dry!      ");
           heater = 0;
           water = 1;
@@ -125,6 +125,7 @@ void loop() {
           };
           heater = 1;
           water = 1;
+
         } else if (temperature < target_temp && humidity >= target_humidity){
           if (temperature >= comfort_temp) {
             screen1.print("  Normal condition  ");
