@@ -8,9 +8,9 @@
 #include "Value_stack.h"
 
 #define MQ135_ANALOG_PIN  A0        // PA_0 as MQ-125 analog sensor for CO2
-#define LED1              PC_13
-#define HEATER            PB_3
-#define WATER             PB_4
+#define LED1              LED_BUILTIN
+#define HEATER            A7
+#define WATER             A6
 
 // for DHT11,
 //      VCC: 5V or 3V
