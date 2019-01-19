@@ -7,14 +7,19 @@
 #include "LiquidCrystal_I2C.h"
 #include "Value_stack.h"
 
+#define MQ135_ANALOG_PIN  A0        // PA_0 as MQ-125 analog sensor for CO2
+#define LED1              PC_13
+#define HEATER            PB_3
+#define WATER             PB_4
+
 // for DHT11,
 //      VCC: 5V or 3V
 //      GND: GND
 //      DATA: 2
 
+
 int pinDHT11 = A2;                        // PA_2 as HDT11 sensor for TEMP and Humidity
 SimpleDHT11 dht11(pinDHT11);
-#define MQ135_ANALOG_PIN        A0        // PA_0 as MQ-125 analog sensor for CO2
 
 Value_stack CO2_PPM_stack;
 
@@ -56,6 +61,14 @@ int MQ135_ao_from_adc_to_ppm(int adc_value, int temp_value) {
 
 void setup() {
 
+    pinMode(LED1, OUTPUT);
+
+    pinMode(HEATER, OUTPUT);
+    digitalWrite(HEATER, LOW);
+
+    pinMode(WATER, OUTPUT);
+    digitalWrite(WATER, LOW);
+
     Serial.begin(9600);
     while (!Serial);
     Serial.println("Home Climatizer 0.1");
@@ -79,6 +92,7 @@ void setup() {
 void loop() {
 
         delay(750);
+        digitalWrite(LED1, HIGH);
 
         //dht11.read(&temperature, &humidity, NULL);
 
@@ -104,17 +118,28 @@ void loop() {
 
         screen1.setCursor(0,2);
         if (temperature == 0 && humidity == 0) {
+
           screen1.print(" DHT11 Sensor Error!");
           heater = 0;
+          digitalWrite(HEATER, LOW);
           water = 0;
+          digitalWrite(WATER, LOW);
+
         } else if (temperature > target_temp && humidity > target_humidity) {
-          screen1.print(" Comfort condition  ");
+
+          screen1.print("  Comfort condition ");
           heater = 0;
+          digitalWrite(HEATER, LOW);
           water = 0;
+          digitalWrite(WATER, LOW);
+
         } else if (temperature > target_temp && humidity < target_humidity) {
+
           screen1.print("      Too dry!      ");
           heater = 0;
+          digitalWrite(HEATER, LOW);
           water = 1;
+          digitalWrite(WATER, HIGH);
 
         } else if (temperature < target_temp && humidity < target_humidity){
 
@@ -124,7 +149,9 @@ void loop() {
             screen1.print(" Too cold! Too dry! ");
           };
           heater = 1;
+          digitalWrite(HEATER, HIGH);
           water = 1;
+          digitalWrite(WATER, HIGH);
 
         } else if (temperature < target_temp && humidity >= target_humidity){
           if (temperature >= comfort_temp) {
@@ -133,7 +160,9 @@ void loop() {
             screen1.print("     Too cold!      ");
           };
           heater = 1;
+          digitalWrite(HEATER, HIGH);
           water = 0;
+          digitalWrite(WATER, LOW);
         };
 
         if (heater==0) {
@@ -153,6 +182,7 @@ void loop() {
         };
 
         delay(750);
+        digitalWrite(LED1, LOW);
 
         int analog_value = (int)analogRead(MQ135_ANALOG_PIN);
         CO2_PPM_stack.add_value(MQ135_ao_from_adc_to_ppm(analog_value, temperature));
