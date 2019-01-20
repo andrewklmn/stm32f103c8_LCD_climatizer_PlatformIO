@@ -6,11 +6,14 @@
 #include "LCD.h"
 #include "LiquidCrystal_I2C.h"
 #include "Value_stack.h"
+#include "On_off_driver.h"
 
 #define MQ135_ANALOG_PIN  A0        // PA_0 as MQ-125 analog sensor for CO2
 #define LED1              LED_BUILTIN
 #define HEATER            A7
 #define WATER             A6
+#define WARNING_LED       A5
+#define DANGER_LED        A4
 
 // for DHT11,
 //      VCC: 5V or 3V
@@ -23,8 +26,8 @@ SimpleDHT11 dht11(pinDHT11);
 
 Value_stack CO2_PPM_stack;
 
-int heater = 0;
-int water = 0;
+On_off_driver heater(20);
+On_off_driver water(10);
 
 byte temperature = 0;
 byte target_temp = 20;
@@ -68,6 +71,12 @@ void setup() {
 
     pinMode(WATER, OUTPUT);
     digitalWrite(WATER, LOW);
+
+    pinMode(WARNING_LED, OUTPUT);
+    digitalWrite(WARNING_LED, LOW);
+
+    pinMode(DANGER_LED, OUTPUT);
+    digitalWrite(DANGER_LED, LOW);
 
     Serial.begin(9600);
     while (!Serial);
@@ -120,26 +129,26 @@ void loop() {
         if (temperature == 0 && humidity == 0) {
 
           screen1.print(" DHT11 Sensor Error!");
-          heater = 0;
-          digitalWrite(HEATER, LOW);
-          water = 0;
-          digitalWrite(WATER, LOW);
+          heater.set_state(0);
+          //digitalWrite(HEATER, LOW);
+          water.set_state(0);
+          //digitalWrite(WATER, LOW);
 
         } else if (temperature > target_temp && humidity > target_humidity) {
 
           screen1.print("  Comfort condition ");
-          heater = 0;
-          digitalWrite(HEATER, LOW);
-          water = 0;
-          digitalWrite(WATER, LOW);
+          heater.set_state(0);
+          //digitalWrite(HEATER, LOW);
+          water.set_state(0);
+          //digitalWrite(WATER, LOW);
 
         } else if (temperature > target_temp && humidity < target_humidity) {
 
           screen1.print("      Too dry!      ");
-          heater = 0;
-          digitalWrite(HEATER, LOW);
-          water = 1;
-          digitalWrite(WATER, HIGH);
+          heater.set_state(0);
+          //digitalWrite(HEATER, LOW);
+          water.set_state(1);
+          //digitalWrite(WATER, HIGH);
 
         } else if (temperature < target_temp && humidity < target_humidity){
 
@@ -148,10 +157,10 @@ void loop() {
           } else {
             screen1.print(" Too cold! Too dry! ");
           };
-          heater = 1;
-          digitalWrite(HEATER, HIGH);
-          water = 1;
-          digitalWrite(WATER, HIGH);
+          heater.set_state(1);
+          //digitalWrite(HEATER, HIGH);
+          water.set_state(1);
+          //digitalWrite(WATER, HIGH);
 
         } else if (temperature < target_temp && humidity >= target_humidity){
           if (temperature >= comfort_temp) {
@@ -159,27 +168,35 @@ void loop() {
           } else {
             screen1.print("     Too cold!      ");
           };
-          heater = 1;
+          heater.set_state(1);
+          //digitalWrite(HEATER, HIGH);
+          water.set_state(0);
+          //digitalWrite(WATER, LOW);
+        };
+
+
+
+        if(heater.get_state()==0) {
+          digitalWrite(HEATER, LOW);
+          screen1.setCursor(7,3);
+          screen1.print("off");
+        } else {
           digitalWrite(HEATER, HIGH);
-          water = 0;
+          screen1.setCursor(7,3);
+          screen1.print("ON ");
+        };
+
+
+        if(water.get_state()==0) {
           digitalWrite(WATER, LOW);
-        };
-
-        if (heater==0) {
-          screen1.setCursor(7,3);
-          screen1.print("off");
-        } else {
-          screen1.setCursor(7,3);
-          screen1.print("ON ");
-        };
-
-        if (water==0) {
           screen1.setCursor(17,3);
           screen1.print("off");
         } else {
+          digitalWrite(WATER, HIGH);
           screen1.setCursor(17,3);
           screen1.print("ON ");
         };
+
 
         delay(750);
         digitalWrite(LED1, LOW);
@@ -192,16 +209,25 @@ void loop() {
           //int sensorValue = analog_value;
 
           screen1.setCursor(12,1);
-          if (sensorValue > 999) {
+          if (sensorValue > 1100) {
             screen1.print(sensorValue);
             screen1.print("ppm ");
-            //if (sensorValue > 1000) {
-              screen1.setCursor(0,2);
-              screen1.print("  Need ventilation! ");
-            //};
+            screen1.setCursor(0,2);
+            screen1.print("  Need ventilation! ");
           } else {
             screen1.print(sensorValue);
             screen1.print("ppm  ");
+          };
+
+          if (sensorValue > 1100 && sensorValue <= 1500) {
+            digitalWrite(WARNING_LED, HIGH);
+            digitalWrite(DANGER_LED, LOW);
+          } else if (sensorValue > 1500){
+            digitalWrite(WARNING_LED, LOW);
+            digitalWrite(DANGER_LED, HIGH);
+          } else {
+            digitalWrite(WARNING_LED, LOW);
+            digitalWrite(DANGER_LED, LOW);
           };
         } else {
           pass_adc_reading_cycles--;
