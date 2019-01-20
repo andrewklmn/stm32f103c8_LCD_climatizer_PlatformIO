@@ -184,12 +184,12 @@ void loop() {
         delay(750);
         digitalWrite(LED1, LOW);
 
-        int analog_value = (int)analogRead(MQ135_ANALOG_PIN);
-        CO2_PPM_stack.add_value(MQ135_ao_from_adc_to_ppm(analog_value, temperature));
-        int sensorValue = CO2_PPM_stack.get_average();
-        //int sensorValue = analog_value;
-
         if (pass_adc_reading_cycles == 0) {
+
+          int analog_value = (int)analogRead(MQ135_ANALOG_PIN);
+          CO2_PPM_stack.add_value(MQ135_ao_from_adc_to_ppm(analog_value, temperature));
+          int sensorValue = CO2_PPM_stack.get_average();
+          //int sensorValue = analog_value;
 
           screen1.setCursor(12,1);
           if (sensorValue > 999) {
