@@ -26,8 +26,8 @@ SimpleDHT11 dht11(pinDHT11);
 
 Value_stack CO2_PPM_stack;
 
-On_off_driver heater(20);
-On_off_driver water(10);
+On_off_driver heater(10);
+On_off_driver water(5);
 
 byte temperature = 0;
 byte target_temp = 20;
@@ -129,26 +129,20 @@ void loop() {
         if (temperature == 0 && humidity == 0) {
 
           screen1.print(" DHT11 Sensor Error!");
-          heater.set_state(0);
-          //digitalWrite(HEATER, LOW);
-          water.set_state(0);
-          //digitalWrite(WATER, LOW);
+          heater.set_state(1);
+          water.set_state(1);
 
         } else if (temperature > target_temp && humidity > target_humidity) {
 
           screen1.print("  Comfort condition ");
           heater.set_state(0);
-          //digitalWrite(HEATER, LOW);
           water.set_state(0);
-          //digitalWrite(WATER, LOW);
 
         } else if (temperature > target_temp && humidity < target_humidity) {
 
           screen1.print("      Too dry!      ");
           heater.set_state(0);
-          //digitalWrite(HEATER, LOW);
           water.set_state(1);
-          //digitalWrite(WATER, HIGH);
 
         } else if (temperature < target_temp && humidity < target_humidity){
 
@@ -158,9 +152,7 @@ void loop() {
             screen1.print(" Too cold! Too dry! ");
           };
           heater.set_state(1);
-          //digitalWrite(HEATER, HIGH);
           water.set_state(1);
-          //digitalWrite(WATER, HIGH);
 
         } else if (temperature < target_temp && humidity >= target_humidity){
           if (temperature >= comfort_temp) {
@@ -169,13 +161,12 @@ void loop() {
             screen1.print("     Too cold!      ");
           };
           heater.set_state(1);
-          //digitalWrite(HEATER, HIGH);
           water.set_state(0);
-          //digitalWrite(WATER, LOW);
+        } else {
+          screen1.print("  Normal condition  ");
         };
 
-
-
+        heater.tic_tac();
         if(heater.get_state()==0) {
           digitalWrite(HEATER, LOW);
           screen1.setCursor(7,3);
@@ -186,7 +177,7 @@ void loop() {
           screen1.print("ON ");
         };
 
-
+        water.tic_tac();
         if(water.get_state()==0) {
           digitalWrite(WATER, LOW);
           screen1.setCursor(17,3);
@@ -209,11 +200,13 @@ void loop() {
           //int sensorValue = analog_value;
 
           screen1.setCursor(12,1);
-          if (sensorValue > 1100) {
+          if (sensorValue > 999) {
             screen1.print(sensorValue);
             screen1.print("ppm ");
-            screen1.setCursor(0,2);
-            screen1.print("  Need ventilation! ");
+            if(sensorValue > 1000) {
+              screen1.setCursor(0,2);
+              screen1.print("  Need ventilation! ");
+            };
           } else {
             screen1.print(sensorValue);
             screen1.print("ppm  ");
