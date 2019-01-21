@@ -81,9 +81,9 @@ void setup() {
     pinMode(DANGER_LED, OUTPUT);
     digitalWrite(DANGER_LED, LOW);
 
-    Serial.begin(9600);
-    while (!Serial);
-    Serial.println("Home Climatizer 0.1");
+    //Serial.begin(9600);
+    //while (!Serial);
+    //Serial.println("Home Climatizer 0.1");
 
     screen1.begin (20,4);
     screen1.setBacklightPin(3,POSITIVE);
@@ -115,7 +115,7 @@ void loop() {
           humidity=0;
           //return;
         } else {
-          //temperature = temperature-2;
+          temperature = temperature-2;
         };
 
         screen1.setCursor(5,0);
