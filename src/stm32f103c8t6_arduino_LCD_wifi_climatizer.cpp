@@ -14,6 +14,9 @@
 #define WATER             A6
 #define WARNING_LED       A5
 #define DANGER_LED        A4
+// LCD 2004 i2c PINS:
+// i2c SDA  - B7
+// i2c SCL  - B6
 
 // for DHT11,
 //      VCC: 5V or 3V
