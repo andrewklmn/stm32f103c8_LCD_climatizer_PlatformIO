@@ -132,13 +132,13 @@ void loop() {
           heater.set_state(1);
           water.set_state(1);
 
-        } else if (temperature > target_temp && humidity > target_humidity) {
+        } else if (temperature >= target_temp && humidity >= target_humidity) {
 
           screen1.print("  Comfort condition ");
           heater.set_state(0);
           water.set_state(0);
 
-        } else if (temperature > target_temp && humidity < target_humidity) {
+        } else if (temperature >= target_temp && humidity < target_humidity) {
 
           screen1.print("      Too dry!      ");
           heater.set_state(0);
@@ -198,6 +198,8 @@ void loop() {
           CO2_PPM_stack.add_value(MQ135_ao_from_adc_to_ppm(analog_value, temperature));
           int sensorValue = CO2_PPM_stack.get_average();
           //int sensorValue = analog_value;
+
+          if (sensorValue > 9999) sensorValue = 9999;
 
           screen1.setCursor(12,1);
           if (sensorValue > 999) {
