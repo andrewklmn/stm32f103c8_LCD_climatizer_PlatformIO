@@ -115,7 +115,7 @@ void loop() {
           humidity=0;
           //return;
         } else {
-          temperature = temperature-3;
+          temperature = temperature-1;
         };
 
         screen1.setCursor(5,0);
