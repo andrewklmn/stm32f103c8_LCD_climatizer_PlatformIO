@@ -33,8 +33,8 @@ On_off_driver heater(10);
 On_off_driver water(5);
 
 byte temperature = 0;
-byte target_temp = 20;
-byte comfort_temp = 18;
+byte target_temp = 21;
+byte comfort_temp = 19;
 
 byte humidity = 0;
 byte target_humidity = 40;
@@ -135,19 +135,19 @@ void loop() {
           heater.set_state(1);
           water.set_state(1);
 
-        } else if (temperature >= target_temp && humidity >= target_humidity) {
+        } else if (temperature > target_temp && humidity > target_humidity) {
 
           screen1.print("  Comfort condition ");
           heater.set_state(0);
           water.set_state(0);
 
-        } else if (temperature >= target_temp && humidity < target_humidity) {
+        } else if (temperature > target_temp && humidity <= target_humidity) {
 
           screen1.print("      Too dry!      ");
           heater.set_state(0);
           water.set_state(1);
 
-        } else if (temperature < target_temp && humidity < target_humidity){
+        } else if (temperature <= target_temp && humidity <= target_humidity){
 
           if (temperature >= comfort_temp) {
             screen1.print("      Too dry!      ");
@@ -157,7 +157,7 @@ void loop() {
           heater.set_state(1);
           water.set_state(1);
 
-        } else if (temperature < target_temp && humidity >= target_humidity){
+        } else if (temperature <= target_temp && humidity > target_humidity){
           if (temperature >= comfort_temp) {
             screen1.print("  Normal condition  ");
           } else {
