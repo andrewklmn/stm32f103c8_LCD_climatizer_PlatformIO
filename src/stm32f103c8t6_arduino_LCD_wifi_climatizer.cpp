@@ -14,6 +14,7 @@
 #define WATER             A6
 #define WARNING_LED       A5
 #define DANGER_LED        A4
+#define BUTTON            A3
 // LCD 2004 i2c PINS:
 // i2c SDA  - B7
 // i2c SCL  - B6
@@ -22,9 +23,9 @@
 //      VCC: 5V or 3V
 //      GND: GND
 //      DATA: 2
+int   pinDHT11 =           A2;  // PA_2 as HDT11 sensor for TEMP and Humidity
 
 
-int pinDHT11 = A2;                        // PA_2 as HDT11 sensor for TEMP and Humidity
 SimpleDHT11 dht11(pinDHT11);
 
 Value_stack CO2_PPM_stack;
@@ -33,11 +34,19 @@ On_off_driver heater(10);
 On_off_driver water(5);
 
 byte temperature = 0;
-byte target_temp = 21;
-byte comfort_temp = 19;
-
 byte humidity = 0;
-byte target_humidity = 40;
+
+// FOR GREEN ONE
+const byte target_temp = 19;
+const byte comfort_temp = 18;
+const byte target_humidity = 40;
+
+/*
+// FOR RED ONE
+const byte target_temp = 20;
+const byte comfort_temp = 19;
+const byte target_humidity = 50;
+*/
 
 int pass_adc_reading_cycles = 10;
 
@@ -45,24 +54,33 @@ int err = SimpleDHTErrSuccess;
 
 LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack
 
-int MQ135_ao_from_adc_to_ppm(int adc_value, int temp_value) {
+int MQ135_ao_from_adc_to_ppm(int ADC_value, int temp_value) {
 
-    float MQ135_SCALINGFACTOR = 116;
-    float MQ135_EXPONENT = -2.739;
+  // FOR GREEN ONE
+  #define RLOAD 1000
+  /// Calibration resistance at atmospheric CO2 level
+  #define RZERO 71000
+  /// Parameters for calculating ppm of CO2 from sensor resistance
+  #define PARA 116
+  #define PARB 2.8
+
+/*
+  // FOR RED ONE
+  #define RLOAD 1000
+  /// Calibration resistance at atmospheric CO2 level
+  #define RZERO 53000
+  /// Parameters for calculating ppm of CO2 from sensor resistance
+  #define PARA 76.
+  #define PARB 1.9
+
+*/
     float Up = 5.0;
-    float Uadc = 3.3;
-    int ADC_steps = 1024;
-    int R2 = 1000;
-    float ro = 41763;              // Ro MQ135
+    float Uadc_max = 3.3;
+    int ADC_steps = 1023;
 
-    if (temp_value < 8 ) temp_value=8;
-    //if (temp_value > 20 ) temp_value=20;
-
-    int temp_correction = (temp_value-20)*3.5;
-
-    float Ud = (float)Uadc/ADC_steps * (float)(adc_value - temp_correction);
-    float resvalue = Up/Ud*R2-R2;  // Rs MQ135 now
-    return round((float)MQ135_SCALINGFACTOR * pow( ((float)resvalue/ro), MQ135_EXPONENT));
+    float Uadc = Uadc_max/ADC_steps*ADC_value;
+    float resistance = (Up/Uadc)*RLOAD - RLOAD;
+    return PARA * pow((resistance/RZERO), -PARB);
 };
 
 void setup() {
@@ -128,27 +146,22 @@ void loop() {
         screen1.print(humidity);
         screen1.print("%  ");
 
+
+
         screen1.setCursor(0,2);
         if (temperature == 0 && humidity == 0) {
-
           screen1.print(" DHT11 Sensor Error!");
           heater.set_state(1);
           water.set_state(1);
-
         } else if (temperature > target_temp && humidity > target_humidity) {
-
           screen1.print("  Comfort condition ");
           heater.set_state(0);
           water.set_state(0);
-
         } else if (temperature > target_temp && humidity <= target_humidity) {
-
           screen1.print("      Too dry!      ");
           heater.set_state(0);
           water.set_state(1);
-
         } else if (temperature <= target_temp && humidity <= target_humidity){
-
           if (temperature >= comfort_temp) {
             screen1.print("      Too dry!      ");
           } else {
@@ -156,7 +169,6 @@ void loop() {
           };
           heater.set_state(1);
           water.set_state(1);
-
         } else if (temperature <= target_temp && humidity > target_humidity){
           if (temperature >= comfort_temp) {
             screen1.print("  Normal condition  ");
@@ -217,10 +229,10 @@ void loop() {
             screen1.print("ppm  ");
           };
 
-          if (sensorValue > 1100 && sensorValue <= 1500) {
+          if (sensorValue > 600 && sensorValue <= 1200) {
             digitalWrite(WARNING_LED, HIGH);
             digitalWrite(DANGER_LED, LOW);
-          } else if (sensorValue > 1500){
+          } else if (sensorValue > 1200){
             digitalWrite(WARNING_LED, LOW);
             digitalWrite(DANGER_LED, HIGH);
           } else {
