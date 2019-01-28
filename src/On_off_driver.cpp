@@ -39,3 +39,9 @@ void On_off_driver::set_state(int to_state){
       if (count == 0) count = delay;
     };
 };
+
+void On_off_driver::stop(){
+  count = 0;
+  state = 0;
+  new_state = 0;
+};

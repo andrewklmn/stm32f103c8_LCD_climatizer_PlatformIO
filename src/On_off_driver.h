@@ -4,7 +4,7 @@
  * and open the template in the editor.
  */
 
-/* 
+/*
  * File:   On_off_driver.h
  * Author: user
  *
@@ -19,11 +19,12 @@ public:
     On_off_driver();
     On_off_driver(int new_delay);
     virtual ~On_off_driver(){
-    
+
     };
     void tic_tac();
     int get_state();
     void set_state(int to_state);
+    void stop();
 private:
     int count;
     int delay;
@@ -32,4 +33,3 @@ private:
 };
 
 #endif /* ON_OFF_DRIVER_H */
-

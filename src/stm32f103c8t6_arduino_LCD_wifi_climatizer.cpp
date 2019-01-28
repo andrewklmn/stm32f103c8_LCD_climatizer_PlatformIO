@@ -35,23 +35,26 @@ On_off_driver water(5);
 
 byte temperature = 0;
 byte humidity = 0;
-
+/*
 // FOR GREEN ONE
 const byte target_temp = 19;
 const byte comfort_temp = 18;
 const byte target_humidity = 40;
+*/
 
-/*
+
 // FOR RED ONE
 const byte target_temp = 20;
 const byte comfort_temp = 19;
 const byte target_humidity = 50;
-*/
 
 int pass_adc_reading_cycles = 10;
-
 int err = SimpleDHTErrSuccess;
 
+int monitor_mode = 0;
+int sensorValue = 0;
+
+//LiquidCrystal_I2C  screen1(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack
 LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack
 
 int MQ135_ao_from_adc_to_ppm(int ADC_value, int temp_value) {
@@ -64,7 +67,7 @@ int MQ135_ao_from_adc_to_ppm(int ADC_value, int temp_value) {
   #define PARA 116
   #define PARB 2.8
 
-/*
+  /*
   // FOR RED ONE
   #define RLOAD 1000
   /// Calibration resistance at atmospheric CO2 level
@@ -72,8 +75,9 @@ int MQ135_ao_from_adc_to_ppm(int ADC_value, int temp_value) {
   /// Parameters for calculating ppm of CO2 from sensor resistance
   #define PARA 76.
   #define PARB 1.9
+  */
 
-*/
+
     float Up = 5.0;
     float Uadc_max = 3.3;
     int ADC_steps = 1023;
@@ -94,10 +98,12 @@ void setup() {
     digitalWrite(WATER, LOW);
 
     pinMode(WARNING_LED, OUTPUT);
-    digitalWrite(WARNING_LED, LOW);
+    digitalWrite(WARNING_LED, HIGH);
 
     pinMode(DANGER_LED, OUTPUT);
     digitalWrite(DANGER_LED, LOW);
+
+    pinMode(BUTTON, INPUT);
 
     //Serial.begin(9600);
     //while (!Serial);
@@ -116,7 +122,17 @@ void setup() {
     screen1.print(" System is starting ");
     screen1.setCursor(0,3);
     screen1.print("Heater:--- Water:---");
-    delay(750);
+
+    delay(400);
+
+    digitalWrite(WARNING_LED, LOW);
+    digitalWrite(DANGER_LED, HIGH);
+
+    delay(350);
+
+    digitalWrite(WARNING_LED, LOW);
+    digitalWrite(DANGER_LED, LOW);
+
 }
 
 void loop() {
@@ -124,8 +140,28 @@ void loop() {
         delay(750);
         digitalWrite(LED1, HIGH);
 
-        //dht11.read(&temperature, &humidity, NULL);
 
+        // check button state
+        if ( digitalRead(BUTTON) == HIGH ) {
+          // change current working mode
+          if (monitor_mode == 0) {
+            monitor_mode = 1;
+            screen1.setCursor(0,3);
+            screen1.print("----monitor mode----");
+            //heater.stop();
+            //water.stop();
+          } else {
+            monitor_mode = 0;
+            screen1.setCursor(0,3);
+            screen1.print("Heater:--- Water:---");
+          };
+        };
+
+        heater.tic_tac();
+        water.tic_tac();
+
+
+        //dht11.read(&temperature, &humidity, NULL);
         if ((err = dht11.read(&temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
           //Serial.print("Read DHT11 failed, err=");
           //Serial.println(err);
@@ -146,7 +182,7 @@ void loop() {
         screen1.print(humidity);
         screen1.print("%  ");
 
-
+    if ( monitor_mode == 0) {
 
         screen1.setCursor(0,2);
         if (temperature == 0 && humidity == 0) {
@@ -181,7 +217,7 @@ void loop() {
           screen1.print("  Normal condition  ");
         };
 
-        heater.tic_tac();
+
         if(heater.get_state()==0) {
           digitalWrite(HEATER, LOW);
           screen1.setCursor(7,3);
@@ -192,7 +228,7 @@ void loop() {
           screen1.print("ON ");
         };
 
-        water.tic_tac();
+
         if(water.get_state()==0) {
           digitalWrite(WATER, LOW);
           screen1.setCursor(17,3);
@@ -202,44 +238,55 @@ void loop() {
           screen1.setCursor(17,3);
           screen1.print("ON ");
         };
+    } else {
 
+      digitalWrite(HEATER, LOW);
+      digitalWrite(WATER, LOW);
+      screen1.setCursor(0,2);
+      screen1.print("                    ");
+      //heater.set_state(0);
+      //water.set_state(0);
+    };
 
         delay(750);
         digitalWrite(LED1, LOW);
 
-        if (pass_adc_reading_cycles == 0) {
 
+
+      if (pass_adc_reading_cycles == 0) {
           int analog_value = (int)analogRead(MQ135_ANALOG_PIN);
           CO2_PPM_stack.add_value(MQ135_ao_from_adc_to_ppm(analog_value, temperature));
-          int sensorValue = CO2_PPM_stack.get_average();
+          sensorValue = CO2_PPM_stack.get_average();
           //int sensorValue = analog_value;
-
           if (sensorValue > 9999) sensorValue = 9999;
-
           screen1.setCursor(12,1);
           if (sensorValue > 999) {
             screen1.print(sensorValue);
             screen1.print("ppm ");
-            if(sensorValue > 1000) {
-              screen1.setCursor(0,2);
-              screen1.print("  Need ventilation! ");
-            };
           } else {
             screen1.print(sensorValue);
             screen1.print("ppm  ");
           };
+      }  else {
+          pass_adc_reading_cycles--;
+      };
 
-          if (sensorValue > 600 && sensorValue <= 1200) {
+
+      //if ( monitor_mode == 0) {
+          if (sensorValue > 1000 && sensorValue <= 1500) {
             digitalWrite(WARNING_LED, HIGH);
             digitalWrite(DANGER_LED, LOW);
-          } else if (sensorValue > 1200){
+              screen1.setCursor(0,2);
+              screen1.print("  Need ventilation! ");
+          } else if (sensorValue > 1500){
             digitalWrite(WARNING_LED, LOW);
             digitalWrite(DANGER_LED, HIGH);
+              screen1.setCursor(0,2);
+              screen1.print("  NEED VENTILATION! ");
           } else {
             digitalWrite(WARNING_LED, LOW);
             digitalWrite(DANGER_LED, LOW);
           };
-        } else {
-          pass_adc_reading_cycles--;
-        };
-}
+      //};
+
+};
