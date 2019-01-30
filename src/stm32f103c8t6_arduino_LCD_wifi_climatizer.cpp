@@ -37,14 +37,14 @@ byte temperature = 0;
 byte humidity = 0;
 
 // FOR GREEN ONE - small
-const byte target_temp = 21;
-const byte comfort_temp = 20;
+const byte target_temp = 20;
+const byte comfort_temp = 19;
 const byte target_humidity = 50;
 
 /*
 // FOR RED ONE - big
-const byte target_temp = 20;
-const byte comfort_temp = 19;
+const byte target_temp = 19;
+const byte comfort_temp = 18;
 const byte target_humidity = 50;
 */
 
