@@ -57,7 +57,7 @@ int sensorValue = 0;
 LiquidCrystal_I2C  screen1(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack GREEN
 //LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack RED
 
-int MQ135_ao_from_adc_to_ppm(int ADC_value, int temp_value) {
+int MQ135_ao_from_adc_to_ppm(int ADC_value, int temp_value, int humidity_value) {
 
 
 
@@ -87,7 +87,16 @@ int MQ135_ao_from_adc_to_ppm(int ADC_value, int temp_value) {
     int ADC_steps = 1023;
 
     float Uadc = Uadc_max/ADC_steps*ADC_value;
-    float resistance = (Up/Uadc)*RLOAD - RLOAD;
+
+    /// Parameters to model temperature and humidity dependence
+    #define CORA 0.0003
+    #define CORB 0.02718
+    #define CORC 1.39538
+    #define CORD 0.0018
+    float correction_factor = CORA * temp_value * temp_value - CORB * temp_value + CORC - (humidity_value-33.)*CORD;
+
+    float resistance = ((Up/Uadc)*RLOAD - RLOAD)/correction_factor;
+
     return PARA * pow((resistance/RZERO), -PARB);
 };
 
@@ -259,7 +268,7 @@ void loop() {
 
       if (pass_adc_reading_cycles == 0) {
           int analog_value = (int)analogRead(MQ135_ANALOG_PIN);
-          CO2_PPM_stack.add_value(MQ135_ao_from_adc_to_ppm(analog_value, temperature));
+          CO2_PPM_stack.add_value(MQ135_ao_from_adc_to_ppm(analog_value, temperature, humidity));
           sensorValue = CO2_PPM_stack.get_average();
           //int sensorValue = analog_value;
           if (sensorValue > 9999) sensorValue = 9999;
