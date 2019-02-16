@@ -35,18 +35,17 @@ On_off_driver water(5);
 
 byte temperature = 0;
 byte humidity = 0;
-
 /*
 // FOR GREEN ONE - small
 const byte target_temp = 20;
 const byte comfort_temp = 19;
-const byte target_humidity = 50;
+const byte target_humidity = 49;
 */
 
 // FOR RED ONE - big
 const byte target_temp = 19;
 const byte comfort_temp = 18;
-const byte target_humidity = 50;
+const byte target_humidity = 49;
 
 
 int pass_adc_reading_cycles = 10;
@@ -61,25 +60,23 @@ LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7); // 0x27 is the I2C bus address f
 int MQ135_ao_from_adc_to_ppm(int ADC_value, int temp_value, int humidity_value) {
 
 
-
-/*
+  /*
   // FOR GREEN ONE
   #define RLOAD 1000
   /// Calibration resistance at atmospheric CO2 level
-  #define RZERO 53000
+  #define RZERO 27000
   /// Parameters for calculating ppm of CO2 from sensor resistance
-  #define PARA 76.
-  #define PARB 1.9
-*/
+  #define PARA 116
+  #define PARB 2.71828
+  */
 
-
-    // FOR RED ONE
-    #define RLOAD 1000
-    /// Calibration resistance at atmospheric CO2 level
-    #define RZERO 71000
-    /// Parameters for calculating ppm of CO2 from sensor resistance
-    #define PARA 116
-    #define PARB 2.8
+  // FOR RED ONE
+  #define RLOAD 1000
+  /// Calibration resistance at atmospheric CO2 level
+  #define RZERO 40000
+  /// Parameters for calculating ppm of CO2 from sensor resistance
+  #define PARA 126
+  #define PARB 2.35828
 
 
     float Up = 5.0;
