@@ -1,6 +1,8 @@
 /*
   Home Climatizer 0.1
 */
+
+#include "Arduino.h"
 #include "Wire.h"
 #include "SimpleDHT.h"
 #include "LCD.h"
@@ -8,13 +10,13 @@
 #include "Value_stack.h"
 #include "On_off_driver.h"
 
-#define MQ135_ANALOG_PIN  A0        // PA_0 as MQ-125 analog sensor for CO2
+#define MQ135_ANALOG_PIN  PA0        // PA_0 as MQ-125 analog sensor for CO2
 #define LED1              LED_BUILTIN
-#define HEATER            A7
-#define WATER             A6
-#define WARNING_LED       A5
-#define DANGER_LED        A4
-#define BUTTON            A3
+#define HEATER            PA7
+#define WATER             PA6
+#define WARNING_LED       PA5
+#define DANGER_LED        PA4
+#define BUTTON            PA3
 // LCD 2004 i2c PINS:
 // i2c SDA  - B7
 // i2c SCL  - B6
@@ -23,7 +25,7 @@
 //      VCC: 5V or 3V
 //      GND: GND
 //      DATA: 2
-int   pinDHT11 =           A2;  // PA_2 as HDT11 sensor for TEMP and Humidity
+int   pinDHT11 =           PA2;  // PA_2 as HDT11 sensor for TEMP and Humidity
 
 
 SimpleDHT11 dht11(pinDHT11);
