@@ -1,8 +1,9 @@
+
 /*
   Home Climatizer 0.1
 */
 
-#include "Arduino.h"
+
 #include "Wire.h"
 #include "SimpleDHT.h"
 #include "LCD.h"
@@ -38,26 +39,42 @@ On_off_driver water(5);
 byte temperature = 0;
 byte humidity = 0;
 
+/*
 // FOR GREEN ONE - small
 const byte target_temp = 20;
 const byte comfort_temp = 19;
 const byte target_humidity = 49;
+*/
 
-/*
 // FOR RED ONE - big
 const byte target_temp = 19;
 const byte comfort_temp = 18;
 const byte target_humidity = 49;
-*/
 
-int pass_adc_reading_cycles = 10;
+
+int pass_adc_reading_cycles = 30;
 int err = SimpleDHTErrSuccess;
 
 int monitor_mode = 0;
 int sensorValue = 0;
 
-LiquidCrystal_I2C  screen1(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack GREEN
-//LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack RED
+//LiquidCrystal_I2C  screen1(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack GREEN
+LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack RED
+
+
+int MHZ19B_ao_from_adc_to_ppm(int ADC_value){
+
+  int MHZ19B_range = 2000;
+  int ppm_correction = 100;
+
+  float Up = 5.0;
+  float Uadc_max = 3.3;
+  int ADC_steps = 1023;
+  float Uadc = Uadc_max/ADC_steps*ADC_value;
+
+  return (Uadc-0.4)/1.6*MHZ19B_range + ppm_correction;
+};
+
 
 int MQ135_ao_from_adc_to_ppm(int ADC_value, int temp_value, int humidity_value) {
 
@@ -122,7 +139,7 @@ void setup() {
 
     screen1.begin (20,4);
     screen1.setBacklightPin(3,POSITIVE);
-    screen1.setBacklight(HIGH);
+
 
     screen1.home (); // set cursor to 0,0
     screen1.print("Temp:----   Hum:----");
@@ -143,6 +160,8 @@ void setup() {
 
     digitalWrite(WARNING_LED, LOW);
     digitalWrite(DANGER_LED, LOW);
+
+    screen1.setBacklight(HIGH);
 
 }
 
@@ -266,7 +285,8 @@ void loop() {
 
       if (pass_adc_reading_cycles == 0) {
           int analog_value = (int)analogRead(MQ135_ANALOG_PIN);
-          CO2_PPM_stack.add_value(MQ135_ao_from_adc_to_ppm(analog_value, temperature, humidity));
+          //CO2_PPM_stack.add_value(MQ135_ao_from_adc_to_ppm(analog_value, temperature, humidity));
+          CO2_PPM_stack.add_value(MHZ19B_ao_from_adc_to_ppm(analog_value));
           sensorValue = CO2_PPM_stack.get_average();
           //int sensorValue = analog_value;
           if (sensorValue > 9999) sensorValue = 9999;
@@ -284,12 +304,12 @@ void loop() {
 
 
       //if ( monitor_mode == 0) {
-          if (sensorValue > 1000 && sensorValue <= 1500) {
+          if (sensorValue > 600 && sensorValue <= 1000) {
             digitalWrite(WARNING_LED, HIGH);
             digitalWrite(DANGER_LED, LOW);
               screen1.setCursor(0,2);
               screen1.print("  Need ventilation! ");
-          } else if (sensorValue > 1500){
+          } else if (sensorValue > 1000){
             digitalWrite(WARNING_LED, LOW);
             digitalWrite(DANGER_LED, HIGH);
               screen1.setCursor(0,2);
