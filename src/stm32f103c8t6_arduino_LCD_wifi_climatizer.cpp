@@ -39,18 +39,19 @@ On_off_driver water(5);
 byte temperature = 0;
 byte humidity = 0;
 
-/*
+
 // FOR GREEN ONE - small
 const byte target_temp = 20;
 const byte comfort_temp = 19;
 const byte target_humidity = 49;
-*/
 
+
+/*
 // FOR RED ONE - big
 const byte target_temp = 19;
 const byte comfort_temp = 18;
 const byte target_humidity = 49;
-
+*/
 
 int pass_adc_reading_cycles = 30;
 int err = SimpleDHTErrSuccess;
@@ -58,16 +59,16 @@ int err = SimpleDHTErrSuccess;
 int monitor_mode = 0;
 int sensorValue = 0;
 
-//LiquidCrystal_I2C  screen1(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack GREEN
-LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack RED
+LiquidCrystal_I2C  screen1(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack GREEN
+//LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack RED
 
 
 int MHZ19B_ao_from_adc_to_ppm(int ADC_value){
 
-  int MHZ19B_range = 2000;
-  int ppm_correction = 100;
+  int MHZ19B_range = 5000;
+  int ppm_correction = -50;  //correction value for real MHZ19B after calibration
 
-  float Up = 5.0;
+  //float Up = 5.0;
   float Uadc_max = 3.3;
   int ADC_steps = 1023;
   float Uadc = Uadc_max/ADC_steps*ADC_value;
