@@ -10,6 +10,8 @@
 #include "LiquidCrystal_I2C.h"
 #include "Value_stack.h"
 #include "On_off_driver.h"
+#include "eeprom_flash.h"
+
 
 #define MQ135_ANALOG_PIN  PA0        // PA_0 as MQ-125 analog sensor for CO2
 #define LED1              LED_BUILTIN
@@ -39,34 +41,44 @@ On_off_driver water(5);
 byte temperature = 0;
 byte humidity = 0;
 
+typedef struct {
+    byte nothing;
+    byte mode;
+    byte hum;
+    byte temp;
+} flash_word;
 
-// FOR GREEN ONE - small
-const byte target_temp = 20;
-const byte comfort_temp = 19;
-const byte target_humidity = 49;
-
+flash_word config;
+//flash_word *p_start_config;
 
 /*
-// FOR RED ONE - big
-const byte target_temp = 19;
-const byte comfort_temp = 18;
-const byte target_humidity = 49;
+// FOR GREEN ONE - small - bedroom
+byte target_temp = 22;
+byte target_humidity = 55;
+byte comfort_temp = 21;
 */
 
+
+// FOR RED ONE - big - hall
+byte target_temp = 22;
+byte target_humidity = 49;
+byte comfort_temp = 21;
+
+
+byte monitor_mode = 0;
 int pass_adc_reading_cycles = 30;
 int err = SimpleDHTErrSuccess;
-
-int monitor_mode = 0;
 int sensorValue = 0;
 
-LiquidCrystal_I2C  screen1(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack GREEN
-//LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7); // 0x27 is the I2C bus address for an unmodified backpack RED
+//LiquidCrystal_I2C  screen1(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address  GREEN - SMALL - bedroom
+LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7); // 0x27 is the I2C bus address RED - BIG - hall
 
 
 int MHZ19B_ao_from_adc_to_ppm(int ADC_value){
 
   int MHZ19B_range = 5000;
-  int ppm_correction = -50;  //correction value for real MHZ19B after calibration
+  //int ppm_correction = -50;  //correction value for real MHZ19B after calibration GREEN - SMALL - bedroom
+  int ppm_correction = -100;  //correction value for real MHZ19B after calibration RED - BIG - hall
 
   //float Up = 5.0;
   float Uadc_max = 3.3;
@@ -116,7 +128,32 @@ int MQ135_ao_from_adc_to_ppm(int ADC_value, int temp_value, int humidity_value) 
     return PARA * pow((resistance/RZERO), -PARB);
 };
 
+uint32_t t = 0;
+
 void setup() {
+
+    // Check stored config in flash
+
+    t = readEEPROMWord(0);
+    config = *((flash_word*)&t);
+    if (config.temp < 15 || config.temp > 25 ) config.temp = target_temp;
+    if (config.hum < 30 || config.hum > 80 ) config.hum = target_humidity;
+    if (config.mode > 1 ) config.mode = 1;
+    config.nothing = 255;
+    t = *((uint32_t*)&config);
+    // Write default config if data is corrupted
+    if (t!=readEEPROMWord(0)) {
+      enableEEPROMWriting();
+      writeEEPROMWord(0,t);
+      disableEEPROMWriting();
+    };
+
+    // Set global parameters
+    target_temp = config.temp;
+    target_humidity = config.hum;
+    comfort_temp = config.temp - 1;
+    monitor_mode = config.mode;
+
 
     pinMode(LED1, OUTPUT);
 
@@ -150,7 +187,11 @@ void setup() {
     screen1.setCursor(0,2);
     screen1.print(" System is starting ");
     screen1.setCursor(0,3);
-    screen1.print("Heater:--- Water:---");
+    if (monitor_mode == 0) {
+      screen1.print("Heater:--- Water:---");
+    } else {
+      screen1.print("----monitor mode----");
+    };
 
     delay(400);
 
@@ -177,15 +218,25 @@ void loop() {
           // change current working mode
           if (monitor_mode == 0) {
             monitor_mode = 1;
+            config.mode = 1;
             screen1.setCursor(0,3);
             screen1.print("----monitor mode----");
             //heater.stop();
             //water.stop();
           } else {
             monitor_mode = 0;
+            config.mode = 0;
             screen1.setCursor(0,3);
             screen1.print("Heater:--- Water:---");
           };
+        };
+
+        // Check if config was changhed by user
+        t = readEEPROMWord(0);
+        if ( *((uint32_t*)&config) != t ) {
+          enableEEPROMWriting();
+          writeEEPROMWord(0, *((uint32_t*)&config));
+          disableEEPROMWriting();
         };
 
         heater.tic_tac();
@@ -305,12 +356,12 @@ void loop() {
 
 
       //if ( monitor_mode == 0) {
-          if (sensorValue > 600 && sensorValue <= 1000) {
+          if (sensorValue > 800 && sensorValue <= 1400) {
             digitalWrite(WARNING_LED, HIGH);
             digitalWrite(DANGER_LED, LOW);
               screen1.setCursor(0,2);
               screen1.print("  Need ventilation! ");
-          } else if (sensorValue > 1000){
+          } else if (sensorValue > 1400){
             digitalWrite(WARNING_LED, LOW);
             digitalWrite(DANGER_LED, HIGH);
               screen1.setCursor(0,2);
