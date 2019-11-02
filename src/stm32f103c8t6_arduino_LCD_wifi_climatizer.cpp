@@ -1,7 +1,11 @@
 
 /*
-  Home Climatizer 0.1
+  Home Climatizer 0.3
 */
+
+//#define LOCATION BEDROOM
+#define LOCATION YELLOW_BEDROOM
+//#define LOCATION LIVING_ROOM
 
 
 #include "Wire.h"
@@ -24,7 +28,7 @@
 // i2c SDA  - B7
 // i2c SCL  - B6
 
-// for DHT11,
+// DHT11 CONNECTION
 //      VCC: 5V or 3V
 //      GND: GND
 //      DATA: 2
@@ -51,18 +55,17 @@ typedef struct {
 flash_word config;
 //flash_word *p_start_config;
 
-/*
-// FOR GREEN ONE - small - bedroom
-byte target_temp = 22;
-byte target_humidity = 55;
-byte comfort_temp = 21;
-*/
-
-
-// FOR RED ONE - big - hall
-byte target_temp = 22;
-byte target_humidity = 49;
-byte comfort_temp = 21;
+#if LOCATION==LIVING_ROOM
+  // FOR RED ONE - big - hall
+  byte target_temp = 22;
+  byte target_humidity = 49;
+  byte comfort_temp = 20;
+#else
+  // FOR GREEN ONE - small - bedroom and YELLOW bedroom
+  byte target_temp = 22;
+  byte target_humidity = 49;
+  byte comfort_temp = 20;
+#endif
 
 
 byte monitor_mode = 0;
@@ -70,15 +73,25 @@ int pass_adc_reading_cycles = 30;
 int err = SimpleDHTErrSuccess;
 int sensorValue = 0;
 
-//LiquidCrystal_I2C  screen1(0x27,2,1,0,4,5,6,7); // 0x27 is the I2C bus address  GREEN - SMALL - bedroom
-LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7); // 0x27 is the I2C bus address RED - BIG - hall
+#if LOCATION==LIVING_ROOM
+  // 0x27 is the I2C bus address RED - BIG - hall
+  LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7);
+#else
+  // 0x27 is the I2C bus address  GREEN - SMALL - bedroom
+  LiquidCrystal_I2C  screen1(0x27,2,1,0,4,5,6,7);
+#endif
 
 
 int MHZ19B_ao_from_adc_to_ppm(int ADC_value){
 
   int MHZ19B_range = 5000;
-  //int ppm_correction = -50;  //correction value for real MHZ19B after calibration GREEN - SMALL - bedroom
-  int ppm_correction = -100;  //correction value for real MHZ19B after calibration RED - BIG - hall
+#if LOCATION==YELLOW_BEDROOM
+  int ppm_correction = 50;  //correction value for YELLOW - bedroom
+#elif LOCATION==BEDROOM
+  int ppm_correction = -50;  //correction value for GREEN - SMALL - bedroom
+#else
+  int ppm_correction = -100;  //correction value for RED - BIG - hall
+#endif
 
   //float Up = 5.0;
   float Uadc_max = 3.3;
@@ -136,8 +149,15 @@ void setup() {
 
     t = readEEPROMWord(0);
     config = *((flash_word*)&t);
-    if (config.temp < 15 || config.temp > 25 ) config.temp = target_temp;
-    if (config.hum < 30 || config.hum > 80 ) config.hum = target_humidity;
+    //=====================================================================
+    config.temp = target_temp;
+    config.hum = target_humidity;
+    //=====================================================================
+    // for device with target temp and target humidity control by buttons
+    //=====================================================================
+    //if (config.temp < 15 || config.temp > 25 ) config.temp = target_temp;
+    //if (config.hum < 30 || config.hum > 80 ) config.hum = target_humidity;
+
     if (config.mode > 1 ) config.mode = 1;
     config.nothing = 255;
     t = *((uint32_t*)&config);
