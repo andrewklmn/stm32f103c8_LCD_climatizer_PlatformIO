@@ -3,9 +3,12 @@
   Home Climatizer 0.3
 */
 
-//#define LOCATION YELLOW_BEDROOM
-//#define LOCATION LIVING_ROOM
+#define LIVING_ROOM 1
+#define BEDROOM 2
+#define YELLOW_BEDROOM 3
+//======================= current location of device ========================
 #define LOCATION BEDROOM
+
 
 #include "Wire.h"
 #include "SimpleDHT.h"
@@ -52,9 +55,10 @@ typedef struct {
 } flash_word;
 
 flash_word config;
-//flash_word *p_start_config;
 
-#if LOCATION == LIVING_ROOM
+
+//flash_word *p_start_config;
+#if LOCATION==LIVING_ROOM
   // FOR RED ONE - big - hall
   byte target_temp = 22;
   byte target_humidity = 49;
@@ -62,7 +66,7 @@ flash_word config;
 #else
   // FOR GREEN ONE - small - bedroom and YELLOW bedroom
   byte target_temp = 22;
-  byte target_humidity = 59;
+  byte target_humidity = 54;
   byte comfort_temp = 20;
 #endif
 
@@ -72,7 +76,7 @@ int err = SimpleDHTErrSuccess;
 int sensorValue = 0;
 
 
-#if LOCATION == LIVING_ROOM
+#if LOCATION==LIVING_ROOM
   LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7);
   // 0x3F is the I2C bus address  RED - BIG - living room
 #else
@@ -85,13 +89,13 @@ int MHZ19B_ao_from_adc_to_ppm(int ADC_value){
 
   int MHZ19B_range = 5000;
 
-#if LOCATION == LIVING_ROOM
-  int ppm_correction = -100;  //correction value for RED - BIG - hall
-#elif LOCATION == YELLOW_BEDROOM
-  int ppm_correction = 50;  //correction value for YELLOW - bedroom
-#else
-  int ppm_correction = -50;  //correction value for GREEN - SMALL - bedroom
-#endif
+  #if LOCATION==LIVING_ROOM
+    int ppm_correction = -100;  //correction value for RED - BIG - hall
+  #elif LOCATION==YELLOW_BEDROOM
+    int ppm_correction = 50;  //correction value for YELLOW - bedroom
+  #else
+    int ppm_correction = -50;  //correction value for GREEN - SMALL - bedroom
+  #endif
 
   //float Up = 5.0;
   float Uadc_max = 3.3;
