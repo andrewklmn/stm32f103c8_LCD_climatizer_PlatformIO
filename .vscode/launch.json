@@ -13,6 +13,7 @@
             "request": "launch",
             "name": "PIO Debug",
             "executable": "/home/user/Documents/stm32f103c8_LCD_climatizer_PlatformIO/.pio/build/bluepill_f103c8/firmware.elf",
+            "projectEnvName": "bluepill_f103c8",
             "toolchainBinDir": "/home/user/.platformio/packages/toolchain-gccarmnoneeabi/bin",
             "svdPath": "/home/user/.platformio/platforms/ststm32/misc/svd/STM32F103xx.svd",
             "preLaunchTask": {
@@ -26,6 +27,7 @@
             "request": "launch",
             "name": "PIO Debug (skip Pre-Debug)",
             "executable": "/home/user/Documents/stm32f103c8_LCD_climatizer_PlatformIO/.pio/build/bluepill_f103c8/firmware.elf",
+            "projectEnvName": "bluepill_f103c8",
             "toolchainBinDir": "/home/user/.platformio/packages/toolchain-gccarmnoneeabi/bin",
             "svdPath": "/home/user/.platformio/platforms/ststm32/misc/svd/STM32F103xx.svd",
             "internalConsoleOptions": "openOnSessionStart"

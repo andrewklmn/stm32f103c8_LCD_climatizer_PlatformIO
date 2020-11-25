@@ -9,6 +9,15 @@
 //======================= current location of device ========================
 #define LOCATION BEDROOM
 
+#if LOCATION==LIVING_ROOM
+  #define SELF_HEATING_TEMP_DELTA 2
+#elif LOCATION==YELLOW_BEDROOM
+  #define SELF_HEATING_TEMP_DELTA 3
+#else
+  // ====== BEDROOM
+  #define SELF_HEATING_TEMP_DELTA 3
+#endif
+  
 
 #include "Wire.h"
 #include "SimpleDHT.h"
@@ -254,7 +263,7 @@ void loop() {
             screen1.print("Heater:--- Water:---");
           };
         };
-
+        
         // Check if config was changhed by user
         t = readEEPROMWord(0);
         if ( *((uint32_t*)&config) != t ) {
@@ -275,7 +284,8 @@ void loop() {
           humidity=0;
           //return;
         } else {
-          temperature = temperature-1;
+          // correct self heating delta for BEDROOM
+          temperature = temperature - SELF_HEATING_TEMP_DELTA; 
         };
 
         screen1.setCursor(5,0);
