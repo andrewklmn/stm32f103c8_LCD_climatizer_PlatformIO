@@ -10,12 +10,12 @@
 #define LOCATION BEDROOM
 
 #if LOCATION==LIVING_ROOM
-  #define SELF_HEATING_TEMP_DELTA 2
+  #define SELF_HEATING_TEMP_DELTA 1
 #elif LOCATION==YELLOW_BEDROOM
-  #define SELF_HEATING_TEMP_DELTA 3
+  #define SELF_HEATING_TEMP_DELTA 4
 #else
   // ====== BEDROOM
-  #define SELF_HEATING_TEMP_DELTA 3
+  #define SELF_HEATING_TEMP_DELTA 1
 #endif
   
 
@@ -75,7 +75,7 @@ flash_word config;
 #else
   // FOR GREEN ONE - small - bedroom and YELLOW bedroom
   byte target_temp = 22;
-  byte target_humidity = 54;
+  byte target_humidity = 57;
   byte comfort_temp = 20;
 #endif
 
