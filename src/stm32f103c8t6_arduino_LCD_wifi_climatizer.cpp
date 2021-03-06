@@ -32,10 +32,15 @@ typedef struct {
 } flash_word;
 
 flash_word  current_target_state;
-uint32_t    config_word_buffer = 0;
+
+union config_word {
+  flash_word  flash;
+  uint32_t    buffer;
+} config;
+
+//uint32_t config_word_buffer;
 
 // ============================ setting of initial target values ===================
-//flash_word *p_start_config;
 #if LOCATION==LIVING_ROOM
   // FOR RED ONE - big - hall
   byte target_temp = 22;
@@ -85,8 +90,8 @@ int convert_ADC_to_PPM(int ADC_value){
 
 void setup() {
   // get stored config from flash memory
-  config_word_buffer = readEEPROMWord(0);
-  current_target_state = *((flash_word*)&config_word_buffer);
+  config.buffer = readEEPROMWord(0);
+  current_target_state = config.flash;
   //=====================================================================
   current_target_state.temp = target_temp;
   current_target_state.hum = target_humidity;
@@ -99,12 +104,12 @@ void setup() {
   if (current_target_state.mode > 1 ) current_target_state.mode = 1;
   current_target_state.is_writable = 0;
 
-  config_word_buffer = *((uint32_t*)&current_target_state);
+  config.flash = current_target_state;
 
-  // Write default config if data is corrupted
-  if (config_word_buffer != readEEPROMWord(0)) {
+  // Write default config if data is not equal
+  if (config.buffer != readEEPROMWord(0)) {
     enableEEPROMWriting();
-    writeEEPROMWord(0, config_word_buffer);
+    writeEEPROMWord(0, config.buffer);
     disableEEPROMWriting();
   };
 
@@ -182,10 +187,13 @@ void loop() {
         };
         
         // Check if config was changhed by user
-        config_word_buffer = readEEPROMWord(0);
-        if ( *((uint32_t*)&current_target_state) != config_word_buffer ) {
+        config.buffer = readEEPROMWord(0);
+        if (current_target_state.mode != config.flash.mode 
+            || current_target_state.temp != config.flash.temp
+            || current_target_state.hum != config.flash.hum ) {
+          config.flash = current_target_state;
           enableEEPROMWriting();
-          writeEEPROMWord(0, *((uint32_t*)&current_target_state));
+          writeEEPROMWord(0, config.buffer);
           disableEEPROMWriting();
         };
 
@@ -211,42 +219,52 @@ void loop() {
   screen1.print("%  ");
 
 
-  // =========================== drawing data on the screen ===================
+  // =========================== process data sensor data ===================
   if ( monitor_mode == 0) {
     screen1.setCursor(0,2);
     if (temperature == 0 && humidity == 0) {
+
       screen1.print(" DHT11 Sensor Error!");
-      heater.set_state(1);
-      water.set_state(1);
+      heater.set_state(ON);
+      water.set_state(ON);
+
     } else if (temperature > target_temp && humidity > target_humidity) {
+
       screen1.print("  Comfort condition ");
-      heater.set_state(0);
-      water.set_state(0);
+      heater.set_state(OFF);
+      water.set_state(OFF);
+
     } else if (temperature > target_temp && humidity <= target_humidity) {
+
       screen1.print("      Too dry!      ");
-      heater.set_state(0);
-      water.set_state(1);
+      heater.set_state(OFF);
+      water.set_state(ON);
+
     } else if (temperature <= target_temp && humidity <= target_humidity){
+
       if (temperature >= comfort_temp) {
         screen1.print("      Too dry!      ");
       } else {
         screen1.print(" Too cold! Too dry! ");
       };
-      heater.set_state(1);
-      water.set_state(1);
+      heater.set_state(ON);
+      water.set_state(ON);
+
     } else if (temperature <= target_temp && humidity > target_humidity){
+
       if (temperature >= comfort_temp) {
         screen1.print("  Normal condition  ");
       } else {
         screen1.print("     Too cold!      ");
       };
-      heater.set_state(1);
-      water.set_state(0);
+      heater.set_state(ON);
+      water.set_state(OFF);
+
     } else {
       screen1.print("  Normal condition  ");
     };
 
-    if(heater.get_state()==0) {
+    if(heater.get_state() == OFF) {
       digitalWrite(HEATER_CONTROL_PIN, LOW);
       screen1.setCursor(7,3);
       screen1.print("off");
@@ -256,7 +274,7 @@ void loop() {
       screen1.print("ON ");
     };
 
-    if(water.get_state()==0) {
+    if(water.get_state() == OFF) {
       digitalWrite(WATER_CONTROL_PIN, LOW);
       screen1.setCursor(17,3);
       screen1.print("off");
@@ -277,8 +295,8 @@ void loop() {
   digitalWrite(LED1, LOW);
 
   if (pass_adc_reading_cycles == 0) {
-      int analog_value = (int)analogRead(ANALOG_SENSOR_PIN);
-      CO2_PPM_stack.add_value(convert_ADC_to_PPM(analog_value));
+
+      CO2_PPM_stack.add_value(convert_ADC_to_PPM((int)analogRead(ANALOG_SENSOR_PIN)));
       sensorValue = CO2_PPM_stack.get_average();
 
       if (sensorValue > 9999) sensorValue = 9999;

@@ -13,6 +13,8 @@
 
 #ifndef ON_OFF_DRIVER_H
 #define ON_OFF_DRIVER_H
+#define ON 1
+#define OFF 0
 
 class On_off_driver {
 public:
