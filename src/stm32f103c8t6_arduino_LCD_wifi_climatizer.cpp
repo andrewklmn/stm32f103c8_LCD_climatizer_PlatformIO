@@ -34,11 +34,9 @@ typedef struct {
 flash_word  current_target_state;
 
 union config_word {
-  flash_word  flash;
-  uint32_t    buffer;
+  flash_word  in_flash_format;
+  uint32_t    in_buffer_format;
 } config;
-
-//uint32_t config_word_buffer;
 
 // ============================ setting of initial target values ===================
 #if LOCATION==LIVING_ROOM
@@ -90,8 +88,8 @@ int convert_ADC_to_PPM(int ADC_value){
 
 void setup() {
   // get stored config from flash memory
-  config.buffer = readEEPROMWord(0);
-  current_target_state = config.flash;
+  config.in_buffer_format = readEEPROMWord(0);
+  current_target_state = config.in_flash_format;
   //=====================================================================
   current_target_state.temp = target_temp;
   current_target_state.hum = target_humidity;
@@ -104,12 +102,12 @@ void setup() {
   if (current_target_state.mode > 1 ) current_target_state.mode = 1;
   current_target_state.is_writable = 0;
 
-  config.flash = current_target_state;
+  config.in_flash_format = current_target_state;
 
   // Write default config if data is not equal
-  if (config.buffer != readEEPROMWord(0)) {
+  if (config.in_buffer_format != readEEPROMWord(0)) {
     enableEEPROMWriting();
-    writeEEPROMWord(0, config.buffer);
+    writeEEPROMWord(0, config.in_buffer_format);
     disableEEPROMWriting();
   };
 
@@ -187,13 +185,13 @@ void loop() {
         };
         
         // Check if config was changhed by user
-        config.buffer = readEEPROMWord(0);
-        if (current_target_state.mode != config.flash.mode 
-            || current_target_state.temp != config.flash.temp
-            || current_target_state.hum != config.flash.hum ) {
-          config.flash = current_target_state;
+        config.in_buffer_format = readEEPROMWord(0);
+        if (current_target_state.mode != config.in_flash_format.mode 
+            || current_target_state.temp != config.in_flash_format.temp
+            || current_target_state.hum != config.in_flash_format.hum ) {
+          config.in_flash_format = current_target_state;
           enableEEPROMWriting();
-          writeEEPROMWord(0, config.buffer);
+          writeEEPROMWord(0, config.in_buffer_format);
           disableEEPROMWriting();
         };
 

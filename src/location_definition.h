@@ -1,3 +1,6 @@
+#ifndef LOCATION_DEFINITION_H
+#define LOCATION_DEFINITION_H
+
 #define LIVING_ROOM 1
 #define BEDROOM 2
 #define YELLOW_BEDROOM 3
@@ -14,3 +17,4 @@
   #define SELF_HEATING_TEMP_DELTA 1
 #endif
 
+#endif /* LOCATION_DEFINITION_H */

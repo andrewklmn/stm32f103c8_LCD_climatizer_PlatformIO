@@ -1,3 +1,6 @@
+#ifndef PIN_DEFINITION_H
+#define PIN_DEFINITION_H
+
 #define ANALOG_SENSOR_PIN     PA0           //analog sensor for CO2
 #define LED1                  LED_BUILTIN
 #define HEATER_CONTROL_PIN    PA7
@@ -15,3 +18,5 @@
 //      VCC: 5V or 3V
 //      GND: GND
 //      DATA: 2
+
+#endif /* PIN_DEFINITION_H */
