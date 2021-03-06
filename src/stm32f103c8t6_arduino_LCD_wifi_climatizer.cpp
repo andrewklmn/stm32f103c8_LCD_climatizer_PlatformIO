@@ -1,24 +1,9 @@
 
 /*
-  Home Climatizer 0.3
+  Home Climatizer 1.3
 */
 
-#define LIVING_ROOM 1
-#define BEDROOM 2
-#define YELLOW_BEDROOM 3
-//======================= current location of device ========================
-#define LOCATION BEDROOM
-
-#if LOCATION==LIVING_ROOM
-  #define SELF_HEATING_TEMP_DELTA 1
-#elif LOCATION==YELLOW_BEDROOM
-  #define SELF_HEATING_TEMP_DELTA 4
-#else
-  // ====== BEDROOM
-  #define SELF_HEATING_TEMP_DELTA 1
-#endif
-  
-
+#include "location_definition.h"
 #include "Wire.h"
 #include "SimpleDHT.h"
 #include "LCD.h"
@@ -26,46 +11,30 @@
 #include "Value_stack.h"
 #include "On_off_driver.h"
 #include "eeprom_flash.h"
+#include "pin_definition.h"
 
+#define HEATER_SWITCHING_DELAY 10
+#define WATER_SWITCHING_DELAY   5
 
-#define MQ135_ANALOG_PIN  PA0        // PA_0 as MQ-125 analog sensor for CO2
-#define LED1              LED_BUILTIN
-#define HEATER            PA7
-#define WATER             PA6
-#define WARNING_LED       PA5
-#define DANGER_LED        PA4
-#define BUTTON            PA3
-// LCD 2004 i2c PINS:
-// i2c SDA  - B7
-// i2c SCL  - B6
-
-// DHT11 CONNECTION
-//      VCC: 5V or 3V
-//      GND: GND
-//      DATA: 2
-int   pinDHT11 =           PA2;  // PA_2 as HDT11 sensor for TEMP and Humidity
-
-
-SimpleDHT11 dht11(pinDHT11);
-
+SimpleDHT11 dht11(DHT11_SENSOR_PIN);
 Value_stack CO2_PPM_stack;
-
-On_off_driver heater(10);
-On_off_driver water(5);
+On_off_driver heater(HEATER_SWITCHING_DELAY);
+On_off_driver water(WATER_SWITCHING_DELAY);
 
 byte temperature = 0;
 byte humidity = 0;
 
 typedef struct {
-    byte nothing;
+    byte is_writable;
     byte mode;
     byte hum;
     byte temp;
 } flash_word;
 
-flash_word config;
+flash_word  current_target_state;
+uint32_t    config_word_buffer = 0;
 
-
+// ============================ setting of initial target values ===================
 //flash_word *p_start_config;
 #if LOCATION==LIVING_ROOM
   // FOR RED ONE - big - hall
@@ -84,7 +53,6 @@ int pass_adc_reading_cycles = 30;
 int err = SimpleDHTErrSuccess;
 int sensorValue = 0;
 
-
 #if LOCATION==LIVING_ROOM
   LiquidCrystal_I2C  screen1(0x3F,2,1,0,4,5,6,7);
   // 0x3F is the I2C bus address  RED - BIG - living room
@@ -93,8 +61,9 @@ int sensorValue = 0;
   // 0x27 is the I2C bus address  GREEN - SMALL - bedroom
 #endif
 
+//==================================================================================
 
-int MHZ19B_ao_from_adc_to_ppm(int ADC_value){
+int convert_ADC_to_PPM(int ADC_value){
 
   int MHZ19B_range = 5000;
 
@@ -114,129 +83,78 @@ int MHZ19B_ao_from_adc_to_ppm(int ADC_value){
   return (Uadc-0.4)/1.6*MHZ19B_range + ppm_correction;
 };
 
-
-int MQ135_ao_from_adc_to_ppm(int ADC_value, int temp_value, int humidity_value) {
-
-
-  // FOR GREEN ONE
-  #define RLOAD 1000
-  /// Calibration resistance at atmospheric CO2 level
-  #define RZERO 28000
-  /// Parameters for calculating ppm of CO2 from sensor resistance
-  #define PARA 116
-  #define PARB 2.48828
-
-  /*
-  // FOR RED ONE
-  #define RLOAD 1000
-  /// Calibration resistance at atmospheric CO2 level
-  #define RZERO 55000
-  /// Parameters for calculating ppm of CO2 from sensor resistance
-  #define PARA 116
-  #define PARB 2.35828
-  */
-
-    float Up = 5.0;
-    float Uadc_max = 3.3;
-    int ADC_steps = 1023;
-
-    float Uadc = Uadc_max/ADC_steps*ADC_value;
-
-    /// Parameters to model temperature and humidity dependence
-    #define CORA 0.0003
-    #define CORB 0.02718
-    #define CORC 1.39538
-    #define CORD 0.0018
-    float correction_factor = CORA * temp_value * temp_value - CORB * temp_value + CORC - (humidity_value-33.)*CORD;
-
-    float resistance = ((Up/Uadc)*RLOAD - RLOAD)/correction_factor;
-
-    return PARA * pow((resistance/RZERO), -PARB);
-};
-
-uint32_t t = 0;
-
 void setup() {
+  // get stored config from flash memory
+  config_word_buffer = readEEPROMWord(0);
+  current_target_state = *((flash_word*)&config_word_buffer);
+  //=====================================================================
+  current_target_state.temp = target_temp;
+  current_target_state.hum = target_humidity;
+  //=====================================================================
+  // for device with target temp and target humidity control by buttons
+  //=====================================================================
+  //if (current_target_state.temp < 15 || current_target_state.temp > 25 ) current_target_state.temp = target_temp;
+  //if (current_target_state.hum < 30 || current_target_state.hum > 80 ) current_target_state.hum = target_humidity;
+  
+  if (current_target_state.mode > 1 ) current_target_state.mode = 1;
+  current_target_state.is_writable = 0;
 
-    // Check stored config in flash
+  config_word_buffer = *((uint32_t*)&current_target_state);
 
-    t = readEEPROMWord(0);
-    config = *((flash_word*)&t);
-    //=====================================================================
-    config.temp = target_temp;
-    config.hum = target_humidity;
-    //=====================================================================
-    // for device with target temp and target humidity control by buttons
-    //=====================================================================
-    //if (config.temp < 15 || config.temp > 25 ) config.temp = target_temp;
-    //if (config.hum < 30 || config.hum > 80 ) config.hum = target_humidity;
+  // Write default config if data is corrupted
+  if (config_word_buffer != readEEPROMWord(0)) {
+    enableEEPROMWriting();
+    writeEEPROMWord(0, config_word_buffer);
+    disableEEPROMWriting();
+  };
 
-    if (config.mode > 1 ) config.mode = 1;
-    config.nothing = 255;
-    t = *((uint32_t*)&config);
-    // Write default config if data is corrupted
-    if (t!=readEEPROMWord(0)) {
-      enableEEPROMWriting();
-      writeEEPROMWord(0,t);
-      disableEEPROMWriting();
-    };
-
-    // Set global parameters
-    target_temp = config.temp;
-    target_humidity = config.hum;
-    comfort_temp = config.temp - 1;
-    monitor_mode = config.mode;
-
-
-    pinMode(LED1, OUTPUT);
-
-    pinMode(HEATER, OUTPUT);
-    digitalWrite(HEATER, LOW);
-
-    pinMode(WATER, OUTPUT);
-    digitalWrite(WATER, LOW);
-
-    pinMode(WARNING_LED, OUTPUT);
-    digitalWrite(WARNING_LED, HIGH);
-
-    pinMode(DANGER_LED, OUTPUT);
-    digitalWrite(DANGER_LED, LOW);
-
-    pinMode(BUTTON, INPUT);
-
-    //Serial.begin(9600);
-    //while (!Serial);
-    //Serial.println("Home Climatizer 0.1");
-
-    screen1.begin (20,4);
-    screen1.setBacklightPin(3,POSITIVE);
+  // Set global parameters
+  target_temp = current_target_state.temp;
+  target_humidity = current_target_state.hum;
+  comfort_temp = current_target_state.temp - 1;  //TODO - ????? what is this????ы
+  monitor_mode = current_target_state.mode;
 
 
-    screen1.home (); // set cursor to 0,0
-    screen1.print("Temp:----   Hum:----");
-    screen1.setCursor(0,1);
-    screen1.print(" CO2 level: wait...");
-    //screen1.print(" CO2: ---");
-    screen1.setCursor(0,2);
-    screen1.print(" System is starting ");
-    screen1.setCursor(0,3);
-    if (monitor_mode == 0) {
-      screen1.print("Heater:--- Water:---");
-    } else {
-      screen1.print("----monitor mode----");
-    };
+  pinMode(LED1, OUTPUT);
+  pinMode(HEATER_CONTROL_PIN, OUTPUT);
+  digitalWrite(HEATER_CONTROL_PIN, LOW);
+  pinMode(WATER_CONTROL_PIN, OUTPUT);
+  digitalWrite(WATER_CONTROL_PIN, LOW);
+  pinMode(WARNING_LED, OUTPUT);
+  digitalWrite(WARNING_LED, HIGH);
+  pinMode(DANGER_LED, OUTPUT);
+  digitalWrite(DANGER_LED, LOW);
+  pinMode(CHANGE_MODE_BUTTON, INPUT);
 
-    delay(400);
+  screen1.begin (20,4);
+  screen1.setBacklightPin(3,POSITIVE);
 
-    digitalWrite(WARNING_LED, LOW);
-    digitalWrite(DANGER_LED, HIGH);
 
-    delay(350);
+  screen1.home (); // set cursor to 0,0
+  screen1.print("Temp:----   Hum:----");
+  screen1.setCursor(0,1);
+  screen1.print(" CO2 level: wait...");
+  //screen1.print(" CO2: ---");
+  screen1.setCursor(0,2);
+  screen1.print(" System is starting ");
+  screen1.setCursor(0,3);
+  if (monitor_mode == 0) {
+    screen1.print("Heater:--- Water:---");
+  } else {
+    screen1.print("----monitor mode----");
+  };
 
-    digitalWrite(WARNING_LED, LOW);
-    digitalWrite(DANGER_LED, LOW);
+  delay(400);
 
-    screen1.setBacklight(HIGH);
+  digitalWrite(WARNING_LED, LOW);
+  digitalWrite(DANGER_LED, HIGH);
+
+  delay(350);
+
+  digitalWrite(WARNING_LED, LOW);
+  digitalWrite(DANGER_LED, LOW);
+
+  screen1.setBacklight(HIGH);
 
 }
 
@@ -245,165 +163,153 @@ void loop() {
         delay(750);
         digitalWrite(LED1, HIGH);
 
-
         // check button state
-        if ( digitalRead(BUTTON) == HIGH ) {
+        if ( digitalRead(CHANGE_MODE_BUTTON) == HIGH ) {
           // change current working mode
           if (monitor_mode == 0) {
             monitor_mode = 1;
-            config.mode = 1;
+            current_target_state.mode = 1;
             screen1.setCursor(0,3);
             screen1.print("----monitor mode----");
             //heater.stop();
             //water.stop();
           } else {
             monitor_mode = 0;
-            config.mode = 0;
+            current_target_state.mode = 0;
             screen1.setCursor(0,3);
             screen1.print("Heater:--- Water:---");
           };
         };
         
         // Check if config was changhed by user
-        t = readEEPROMWord(0);
-        if ( *((uint32_t*)&config) != t ) {
+        config_word_buffer = readEEPROMWord(0);
+        if ( *((uint32_t*)&current_target_state) != config_word_buffer ) {
           enableEEPROMWriting();
-          writeEEPROMWord(0, *((uint32_t*)&config));
+          writeEEPROMWord(0, *((uint32_t*)&current_target_state));
           disableEEPROMWriting();
         };
 
         heater.tic_tac();
         water.tic_tac();
 
+  // read current temp and hum and check DHT11 sensor error after it
+  if ((err = dht11.read(&temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
+    temperature=0;
+    humidity=0;
+  } else {
+    temperature = temperature - SELF_HEATING_TEMP_DELTA; 
+  };
 
-        //dht11.read(&temperature, &humidity, NULL);
-        if ((err = dht11.read(&temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {
-          //Serial.print("Read DHT11 failed, err=");
-          //Serial.println(err);
-          temperature=0;
-          humidity=0;
-          //return;
-        } else {
-          // correct self heating delta for BEDROOM
-          temperature = temperature - SELF_HEATING_TEMP_DELTA; 
-        };
+  screen1.setCursor(5,0);
+  screen1.print("+");
+  screen1.print(temperature);
+  screen1.print((char)223);
+  screen1.print("C ");
 
-        screen1.setCursor(5,0);
-        screen1.print("+");
-        screen1.print(temperature);
-        screen1.print((char)223);
-        screen1.print("C ");
-
-        screen1.setCursor(16,0);
-        screen1.print(humidity);
-        screen1.print("%  ");
-
-    if ( monitor_mode == 0) {
-
-        screen1.setCursor(0,2);
-        if (temperature == 0 && humidity == 0) {
-          screen1.print(" DHT11 Sensor Error!");
-          heater.set_state(1);
-          water.set_state(1);
-        } else if (temperature > target_temp && humidity > target_humidity) {
-          screen1.print("  Comfort condition ");
-          heater.set_state(0);
-          water.set_state(0);
-        } else if (temperature > target_temp && humidity <= target_humidity) {
-          screen1.print("      Too dry!      ");
-          heater.set_state(0);
-          water.set_state(1);
-        } else if (temperature <= target_temp && humidity <= target_humidity){
-          if (temperature >= comfort_temp) {
-            screen1.print("      Too dry!      ");
-          } else {
-            screen1.print(" Too cold! Too dry! ");
-          };
-          heater.set_state(1);
-          water.set_state(1);
-        } else if (temperature <= target_temp && humidity > target_humidity){
-          if (temperature >= comfort_temp) {
-            screen1.print("  Normal condition  ");
-          } else {
-            screen1.print("     Too cold!      ");
-          };
-          heater.set_state(1);
-          water.set_state(0);
-        } else {
-          screen1.print("  Normal condition  ");
-        };
+  screen1.setCursor(16,0);
+  screen1.print(humidity);
+  screen1.print("%  ");
 
 
-        if(heater.get_state()==0) {
-          digitalWrite(HEATER, LOW);
-          screen1.setCursor(7,3);
-          screen1.print("off");
-        } else {
-          digitalWrite(HEATER, HIGH);
-          screen1.setCursor(7,3);
-          screen1.print("ON ");
-        };
-
-
-        if(water.get_state()==0) {
-          digitalWrite(WATER, LOW);
-          screen1.setCursor(17,3);
-          screen1.print("off");
-        } else {
-          digitalWrite(WATER, HIGH);
-          screen1.setCursor(17,3);
-          screen1.print("ON ");
-        };
+  // =========================== drawing data on the screen ===================
+  if ( monitor_mode == 0) {
+    screen1.setCursor(0,2);
+    if (temperature == 0 && humidity == 0) {
+      screen1.print(" DHT11 Sensor Error!");
+      heater.set_state(1);
+      water.set_state(1);
+    } else if (temperature > target_temp && humidity > target_humidity) {
+      screen1.print("  Comfort condition ");
+      heater.set_state(0);
+      water.set_state(0);
+    } else if (temperature > target_temp && humidity <= target_humidity) {
+      screen1.print("      Too dry!      ");
+      heater.set_state(0);
+      water.set_state(1);
+    } else if (temperature <= target_temp && humidity <= target_humidity){
+      if (temperature >= comfort_temp) {
+        screen1.print("      Too dry!      ");
+      } else {
+        screen1.print(" Too cold! Too dry! ");
+      };
+      heater.set_state(1);
+      water.set_state(1);
+    } else if (temperature <= target_temp && humidity > target_humidity){
+      if (temperature >= comfort_temp) {
+        screen1.print("  Normal condition  ");
+      } else {
+        screen1.print("     Too cold!      ");
+      };
+      heater.set_state(1);
+      water.set_state(0);
     } else {
-
-      digitalWrite(HEATER, LOW);
-      digitalWrite(WATER, LOW);
-      screen1.setCursor(0,2);
-      screen1.print("                    ");
-      //heater.set_state(0);
-      //water.set_state(0);
+      screen1.print("  Normal condition  ");
     };
 
-        delay(750);
-        digitalWrite(LED1, LOW);
+    if(heater.get_state()==0) {
+      digitalWrite(HEATER_CONTROL_PIN, LOW);
+      screen1.setCursor(7,3);
+      screen1.print("off");
+    } else {
+      digitalWrite(HEATER_CONTROL_PIN, HIGH);
+      screen1.setCursor(7,3);
+      screen1.print("ON ");
+    };
 
+    if(water.get_state()==0) {
+      digitalWrite(WATER_CONTROL_PIN, LOW);
+      screen1.setCursor(17,3);
+      screen1.print("off");
+    } else {
+      digitalWrite(WATER_CONTROL_PIN, HIGH);
+      screen1.setCursor(17,3);
+      screen1.print("ON ");
+    };
+  } else {
+    digitalWrite(HEATER_CONTROL_PIN, LOW);
+    digitalWrite(WATER_CONTROL_PIN, LOW);
+    screen1.setCursor(0,2);
+    screen1.print("                    ");
+  };
+  //===========================================================================
 
+  delay(750);
+  digitalWrite(LED1, LOW);
 
-      if (pass_adc_reading_cycles == 0) {
-          int analog_value = (int)analogRead(MQ135_ANALOG_PIN);
-          //CO2_PPM_stack.add_value(MQ135_ao_from_adc_to_ppm(analog_value, temperature, humidity));
-          CO2_PPM_stack.add_value(MHZ19B_ao_from_adc_to_ppm(analog_value));
-          sensorValue = CO2_PPM_stack.get_average();
-          //int sensorValue = analog_value;
-          if (sensorValue > 9999) sensorValue = 9999;
-          screen1.setCursor(12,1);
-          if (sensorValue > 999) {
-            screen1.print(sensorValue);
-            screen1.print("ppm ");
-          } else {
-            screen1.print(sensorValue);
-            screen1.print("ppm  ");
-          };
-      }  else {
-          pass_adc_reading_cycles--;
+  if (pass_adc_reading_cycles == 0) {
+      int analog_value = (int)analogRead(ANALOG_SENSOR_PIN);
+      CO2_PPM_stack.add_value(convert_ADC_to_PPM(analog_value));
+      sensorValue = CO2_PPM_stack.get_average();
+
+      if (sensorValue > 9999) sensorValue = 9999;
+      screen1.setCursor(12,1);
+
+      if (sensorValue > 999) {
+        screen1.print(sensorValue);
+        screen1.print("ppm ");
+      } else {
+        screen1.print(sensorValue);
+        screen1.print("ppm  ");
       };
+  }  else {
+      pass_adc_reading_cycles--;
+  };
 
 
-      //if ( monitor_mode == 0) {
-          if (sensorValue > 800 && sensorValue <= 1400) {
-            digitalWrite(WARNING_LED, HIGH);
-            digitalWrite(DANGER_LED, LOW);
-              screen1.setCursor(0,2);
-              screen1.print("  Need ventilation! ");
-          } else if (sensorValue > 1400){
-            digitalWrite(WARNING_LED, LOW);
-            digitalWrite(DANGER_LED, HIGH);
-              screen1.setCursor(0,2);
-              screen1.print("  NEED VENTILATION! ");
-          } else {
-            digitalWrite(WARNING_LED, LOW);
-            digitalWrite(DANGER_LED, LOW);
-          };
-      //};
-
+  // ===================== setting PPM alarm LEDS ============================
+  if (sensorValue > 800 && sensorValue <= 1400) {
+    digitalWrite(WARNING_LED, HIGH);
+    digitalWrite(DANGER_LED, LOW);
+      screen1.setCursor(0,2);
+      screen1.print("  Need ventilation! ");
+  } else if (sensorValue > 1400){
+    digitalWrite(WARNING_LED, LOW);
+    digitalWrite(DANGER_LED, HIGH);
+      screen1.setCursor(0,2);
+      screen1.print("  NEED VENTILATION! ");
+  } else {
+    digitalWrite(WARNING_LED, LOW);
+    digitalWrite(DANGER_LED, LOW);
+  };
+  // ===========================================================================
 };
