@@ -1,6 +1,6 @@
 
 /*
-  Home Climatizer 1.3
+  Home Climatizer 1.5
 */
 
 #include "location_definition.h"
@@ -56,7 +56,7 @@ typedef struct {
 flash_record  current_target_state;
 
 union config_word {
-  flash_record  in_flash_record_format;
+  flash_record  record;
   uint32_t      in_buffer_format;
 } config;
 
@@ -102,7 +102,7 @@ void setup() {
   config.in_buffer_format = memory.readWord();
   
   current_target_state.is_writable = 0;
-  current_target_state = config.in_flash_record_format;
+  current_target_state = config.record;
   current_target_state.hum = target_humidity;
   current_target_state.temp = target_temp;
 
@@ -111,7 +111,7 @@ void setup() {
   if (current_target_state.hum < 40 || current_target_state.hum > 70 ) current_target_state.hum = target_humidity;
   if (current_target_state.temp < 10 || current_target_state.temp > 26 ) current_target_state.temp = target_temp;
   
-  config.in_flash_record_format = current_target_state;
+  config.record = current_target_state;
 
   // Write default config if data is not equal
   if (config.in_buffer_format != memory.readWord()) {
@@ -193,11 +193,11 @@ void loop() {
         
   // Check if config was changhed by user
   config.in_buffer_format = memory.readWord();
-  if (current_target_state.mode != config.in_flash_record_format.mode 
-      || current_target_state.temp != config.in_flash_record_format.temp
-      || current_target_state.hum != config.in_flash_record_format.hum ) {
+  if (current_target_state.mode != config.record.mode 
+      || current_target_state.temp != config.record.temp
+      || current_target_state.hum != config.record.hum ) {
 
-    config.in_flash_record_format = current_target_state;
+    config.record = current_target_state;
     memory.writeWord(config.in_buffer_format);
   };
 
