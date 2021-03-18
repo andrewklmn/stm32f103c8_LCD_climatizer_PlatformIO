@@ -12,6 +12,12 @@
 // i2c SDA  - B7
 // i2c SCL  - B6
 
+// setup keyboard definition
+#define UP_BUTTON             PA8
+#define SETUP_BUTTON          PA9
+#define DOWN_BUTTON           PA10
+
+
 #define DHT11_SENSOR_PIN      PA2
 // PA_2 as HDT11 sensor for TEMP and Humidity
 // DHT11 CONNECTION

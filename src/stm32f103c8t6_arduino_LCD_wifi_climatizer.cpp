@@ -35,8 +35,19 @@
   byte comfort_temp = 20;
 #endif
 
-#define HEATER_SWITCHING_DELAY 10
-#define WATER_SWITCHING_DELAY   5
+
+// define target ranges
+#define MIN_TARGET_TEMP_DELTA   -5
+#define MAX_TARGET_TEMP_DELTA   5
+
+#define MIN_TARGET_TEMP         10
+#define MAX_TARGET_TEMP         25
+
+#define MIN_TARGET_HUMIDITY     40
+#define MAX_TARGET_HUMIDITY     80
+
+#define HEATER_SWITCHING_DELAY  15
+#define WATER_SWITCHING_DELAY   10
 
 SimpleDHT11 dht11(DHT11_SENSOR_PIN);
 Value_stack CO2_PPM_stack;
@@ -47,7 +58,7 @@ byte temperature = 0;
 byte humidity = 0;
 
 typedef struct {
-    byte is_writable;
+    signed char temp_delta;
     byte mode;
     byte hum;
     byte temp;
@@ -100,16 +111,19 @@ int convert_ADC_to_PPM(int ADC_value){
 void setup() {
   // get stored config from flash memory
   config.in_buffer_format = memory.readWord();
-  
-  current_target_state.is_writable = 0;
   current_target_state = config.record;
-  current_target_state.hum = target_humidity;
-  current_target_state.temp = target_temp;
 
-  // check if values from memory are correct
+  // check if values from flash memory storage are correct
+  if (current_target_state.temp_delta > MAX_TARGET_TEMP_DELTA 
+      || current_target_state.temp_delta < MIN_TARGET_TEMP_DELTA) current_target_state.temp_delta = SELF_HEATING_TEMP_DELTA;
+
   if (current_target_state.mode > 1 ) current_target_state.mode = 1;
-  if (current_target_state.hum < 40 || current_target_state.hum > 70 ) current_target_state.hum = target_humidity;
-  if (current_target_state.temp < 10 || current_target_state.temp > 26 ) current_target_state.temp = target_temp;
+
+  if (current_target_state.hum < MIN_TARGET_HUMIDITY 
+      || current_target_state.hum > MAX_TARGET_HUMIDITY ) current_target_state.hum = target_humidity;
+
+  if (current_target_state.temp < MIN_TARGET_TEMP 
+      || current_target_state.temp > MAX_TARGET_TEMP ) current_target_state.temp = target_temp;
   
   config.record = current_target_state;
 
@@ -124,7 +138,7 @@ void setup() {
   comfort_temp = current_target_state.temp - 1; // Histeresis emulation
   monitor_mode = current_target_state.mode;
 
-
+  // define pin modes
   pinMode(LED1, OUTPUT);
   pinMode(HEATER_CONTROL_PIN, OUTPUT);
   digitalWrite(HEATER_CONTROL_PIN, LOW);
@@ -136,9 +150,9 @@ void setup() {
   digitalWrite(DANGER_LED, LOW);
   pinMode(CHANGE_MODE_BUTTON, INPUT);
 
+  
   screen1.begin (20,4);
   screen1.setBacklightPin(3,POSITIVE);
-
 
   screen1.home (); // set cursor to 0,0
   screen1.print("Temp:----   Hum:----");
@@ -173,7 +187,7 @@ void loop() {
   delay(750);
   digitalWrite(LED1, HIGH);
 
-  // check button state
+  // check mode button state
   if ( digitalRead(CHANGE_MODE_BUTTON) == HIGH ) {
     // change current working mode
     if (monitor_mode == 0) {
@@ -193,10 +207,12 @@ void loop() {
         
   // Check if config was changhed by user
   config.in_buffer_format = memory.readWord();
-  if (current_target_state.mode != config.record.mode 
+  if (current_target_state.temp_delta != config.record.temp_delta
+      || current_target_state.mode != config.record.mode 
       || current_target_state.temp != config.record.temp
       || current_target_state.hum != config.record.hum ) {
-
+        
+    //save new config to flash memory
     config.record = current_target_state;
     memory.writeWord(config.in_buffer_format);
   };
@@ -209,7 +225,7 @@ void loop() {
     temperature=0;
     humidity=0;
   } else {
-    temperature = temperature - SELF_HEATING_TEMP_DELTA; 
+    temperature = temperature - current_target_state.temp_delta; 
   };
 
   screen1.setCursor(5,0);
