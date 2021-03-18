@@ -13,6 +13,28 @@
 #include "eeprom_flash.h"
 #include "pin_definition.h"
 
+#if LOCATION==LIVING_ROOM
+  #define SELF_HEATING_TEMP_DELTA 1
+#elif LOCATION==YELLOW_BEDROOM
+  #define SELF_HEATING_TEMP_DELTA 4
+#else
+  // ====== BEDROOM
+  #define SELF_HEATING_TEMP_DELTA 1
+#endif
+
+// ============================ setting of initial target values ==============
+#if LOCATION==LIVING_ROOM
+  // FOR RED ONE - big - hall
+  byte target_temp = 22;
+  byte target_humidity = 49;
+  byte comfort_temp = 20;
+#else
+  // FOR GREEN ONE - small - bedroom and YELLOW bedroom
+  byte target_temp = 22;
+  byte target_humidity = 57;
+  byte comfort_temp = 20;
+#endif
+
 #define HEATER_SWITCHING_DELAY 10
 #define WATER_SWITCHING_DELAY   5
 
@@ -38,18 +60,7 @@ union config_word {
   uint32_t    in_buffer_format;
 } config;
 
-// ============================ setting of initial target values ===================
-#if LOCATION==LIVING_ROOM
-  // FOR RED ONE - big - hall
-  byte target_temp = 22;
-  byte target_humidity = 49;
-  byte comfort_temp = 20;
-#else
-  // FOR GREEN ONE - small - bedroom and YELLOW bedroom
-  byte target_temp = 22;
-  byte target_humidity = 57;
-  byte comfort_temp = 20;
-#endif
+FlashBuffer flashMemory;
 
 byte monitor_mode = 0;
 int pass_adc_reading_cycles = 30;
@@ -64,7 +75,7 @@ int sensorValue = 0;
   // 0x27 is the I2C bus address  GREEN - SMALL - bedroom
 #endif
 
-//==================================================================================
+//=============================================================================
 
 int convert_ADC_to_PPM(int ADC_value){
 
@@ -88,33 +99,29 @@ int convert_ADC_to_PPM(int ADC_value){
 
 void setup() {
   // get stored config from flash memory
-  config.in_buffer_format = readEEPROMWord(0);
-  current_target_state = config.in_flash_format;
-  //=====================================================================
-  current_target_state.temp = target_temp;
-  current_target_state.hum = target_humidity;
-  //=====================================================================
-  // for device with target temp and target humidity control by buttons
-  //=====================================================================
-  //if (current_target_state.temp < 15 || current_target_state.temp > 25 ) current_target_state.temp = target_temp;
-  //if (current_target_state.hum < 30 || current_target_state.hum > 80 ) current_target_state.hum = target_humidity;
+  config.in_buffer_format = flashMemory.readWord();
   
-  if (current_target_state.mode > 1 ) current_target_state.mode = 1;
   current_target_state.is_writable = 0;
+  current_target_state = config.in_flash_format;
+  current_target_state.hum = target_humidity;
+  current_target_state.temp = target_temp;
 
+  // check if values from memory are correct
+  if (current_target_state.mode > 1 ) current_target_state.mode = 1;
+  if (current_target_state.hum < 40 || current_target_state.hum > 70 ) current_target_state.hum = target_humidity;
+  if (current_target_state.temp < 10 || current_target_state.temp > 26 ) current_target_state.temp = target_temp;
+  
   config.in_flash_format = current_target_state;
 
   // Write default config if data is not equal
-  if (config.in_buffer_format != readEEPROMWord(0)) {
-    enableEEPROMWriting();
-    writeEEPROMWord(0, config.in_buffer_format);
-    disableEEPROMWriting();
+  if (config.in_buffer_format != flashMemory.readWord()) {
+    flashMemory.writeWord(config.in_buffer_format);
   };
 
   // Set global parameters
   target_temp = current_target_state.temp;
   target_humidity = current_target_state.hum;
-  comfort_temp = current_target_state.temp - 1;  //TODO - ????? what is this????ы
+  comfort_temp = current_target_state.temp - 1; // Histeresis emulation
   monitor_mode = current_target_state.mode;
 
 
@@ -163,40 +170,39 @@ void setup() {
 
 void loop() {
 
-        delay(750);
-        digitalWrite(LED1, HIGH);
+  delay(750);
+  digitalWrite(LED1, HIGH);
 
-        // check button state
-        if ( digitalRead(CHANGE_MODE_BUTTON) == HIGH ) {
-          // change current working mode
-          if (monitor_mode == 0) {
-            monitor_mode = 1;
-            current_target_state.mode = 1;
-            screen1.setCursor(0,3);
-            screen1.print("----monitor mode----");
-            //heater.stop();
-            //water.stop();
-          } else {
-            monitor_mode = 0;
-            current_target_state.mode = 0;
-            screen1.setCursor(0,3);
-            screen1.print("Heater:--- Water:---");
-          };
-        };
+  // check button state
+  if ( digitalRead(CHANGE_MODE_BUTTON) == HIGH ) {
+    // change current working mode
+    if (monitor_mode == 0) {
+      monitor_mode = 1;
+      current_target_state.mode = 1;
+      screen1.setCursor(0,3);
+      screen1.print("----monitor mode----");
+      //heater.stop();
+      //water.stop();
+    } else {
+      monitor_mode = 0;
+      current_target_state.mode = 0;
+      screen1.setCursor(0,3);
+      screen1.print("Heater:--- Water:---");
+    };
+  };
         
-        // Check if config was changhed by user
-        config.in_buffer_format = readEEPROMWord(0);
-        if (current_target_state.mode != config.in_flash_format.mode 
-            || current_target_state.temp != config.in_flash_format.temp
-            || current_target_state.hum != config.in_flash_format.hum ) {
-          config.in_flash_format = current_target_state;
-          enableEEPROMWriting();
-          writeEEPROMWord(0, config.in_buffer_format);
-          disableEEPROMWriting();
-        };
+  // Check if config was changhed by user
+  config.in_buffer_format = flashMemory.readWord();
+  if (current_target_state.mode != config.in_flash_format.mode 
+      || current_target_state.temp != config.in_flash_format.temp
+      || current_target_state.hum != config.in_flash_format.hum ) {
+        
+    config.in_flash_format = current_target_state;
+    flashMemory.writeWord(config.in_buffer_format);
+  };
 
-        heater.tic_tac();
-        water.tic_tac();
+  heater.tic_tac();
+  water.tic_tac();
 
   // read current temp and hum and check DHT11 sensor error after it
   if ((err = dht11.read(&temperature, &humidity, NULL)) != SimpleDHTErrSuccess) {

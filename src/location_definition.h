@@ -8,13 +8,4 @@
 #define LOCATION BEDROOM
 //==============================================================================
 
-#if LOCATION==LIVING_ROOM
-  #define SELF_HEATING_TEMP_DELTA 1
-#elif LOCATION==YELLOW_BEDROOM
-  #define SELF_HEATING_TEMP_DELTA 4
-#else
-  // ====== BEDROOM
-  #define SELF_HEATING_TEMP_DELTA 1
-#endif
-
 #endif /* LOCATION_DEFINITION_H */
