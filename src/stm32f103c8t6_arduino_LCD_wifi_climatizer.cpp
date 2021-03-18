@@ -51,16 +51,16 @@ typedef struct {
     byte mode;
     byte hum;
     byte temp;
-} flash_word;
+} flash_record;
 
-flash_word  current_target_state;
+flash_record  current_target_state;
 
 union config_word {
-  flash_word  in_flash_format;
-  uint32_t    in_buffer_format;
+  flash_record  in_flash_record_format;
+  uint32_t      in_buffer_format;
 } config;
 
-FlashBuffer flashMemory;
+FlashBuffer memory;
 
 byte monitor_mode = 0;
 int pass_adc_reading_cycles = 30;
@@ -99,10 +99,10 @@ int convert_ADC_to_PPM(int ADC_value){
 
 void setup() {
   // get stored config from flash memory
-  config.in_buffer_format = flashMemory.readWord();
+  config.in_buffer_format = memory.readWord();
   
   current_target_state.is_writable = 0;
-  current_target_state = config.in_flash_format;
+  current_target_state = config.in_flash_record_format;
   current_target_state.hum = target_humidity;
   current_target_state.temp = target_temp;
 
@@ -111,11 +111,11 @@ void setup() {
   if (current_target_state.hum < 40 || current_target_state.hum > 70 ) current_target_state.hum = target_humidity;
   if (current_target_state.temp < 10 || current_target_state.temp > 26 ) current_target_state.temp = target_temp;
   
-  config.in_flash_format = current_target_state;
+  config.in_flash_record_format = current_target_state;
 
   // Write default config if data is not equal
-  if (config.in_buffer_format != flashMemory.readWord()) {
-    flashMemory.writeWord(config.in_buffer_format);
+  if (config.in_buffer_format != memory.readWord()) {
+    memory.writeWord(config.in_buffer_format);
   };
 
   // Set global parameters
@@ -192,13 +192,13 @@ void loop() {
   };
         
   // Check if config was changhed by user
-  config.in_buffer_format = flashMemory.readWord();
-  if (current_target_state.mode != config.in_flash_format.mode 
-      || current_target_state.temp != config.in_flash_format.temp
-      || current_target_state.hum != config.in_flash_format.hum ) {
-        
-    config.in_flash_format = current_target_state;
-    flashMemory.writeWord(config.in_buffer_format);
+  config.in_buffer_format = memory.readWord();
+  if (current_target_state.mode != config.in_flash_record_format.mode 
+      || current_target_state.temp != config.in_flash_record_format.temp
+      || current_target_state.hum != config.in_flash_record_format.hum ) {
+
+    config.in_flash_record_format = current_target_state;
+    memory.writeWord(config.in_buffer_format);
   };
 
   heater.tic_tac();
