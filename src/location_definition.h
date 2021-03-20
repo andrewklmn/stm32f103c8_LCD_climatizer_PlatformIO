@@ -5,7 +5,9 @@
 #define BEDROOM 2
 #define YELLOW_BEDROOM 3
 //================ here you can set the current location of device =============
-#define LOCATION BEDROOM
+// #define LOCATION LIVING_ROOM
+// #define LOCATION BEDROOM
+#define LOCATION YELLOW_BEDROOM
 //==============================================================================
 
 #endif /* LOCATION_DEFINITION_H */

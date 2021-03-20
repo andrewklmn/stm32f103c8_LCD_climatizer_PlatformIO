@@ -31,7 +31,7 @@
 #else
   // FOR GREEN ONE - small - bedroom and YELLOW bedroom
   byte target_temp = 22;
-  byte target_humidity = 57;
+  byte target_humidity = 56;
   byte comfort_temp = 20;
 #endif
 
@@ -58,7 +58,7 @@ byte temperature = 0;
 byte humidity = 0;
 
 typedef struct {
-    signed char temp_delta;
+    int8_t temp_delta;
     byte mode;
     byte hum;
     byte temp;
@@ -109,21 +109,31 @@ int convert_ADC_to_PPM(int ADC_value){
 };
 
 void setup() {
+  
   // get stored config from flash memory
+  // memory.eraseMemory();
+
   config.in_buffer_format = memory.readWord();
-  current_target_state = config.record;
-
+  
   // check if values from flash memory storage are correct
-  if (current_target_state.temp_delta > MAX_TARGET_TEMP_DELTA 
-      || current_target_state.temp_delta < MIN_TARGET_TEMP_DELTA) current_target_state.temp_delta = SELF_HEATING_TEMP_DELTA;
+  if (config.in_buffer_format == 0xFFFFFFFF) {
+    current_target_state.temp_delta = SELF_HEATING_TEMP_DELTA;
+    current_target_state.mode = 0;
+    current_target_state.hum = target_humidity;
+    current_target_state.temp = target_temp;
+  } else {
+    current_target_state = config.record;
+    if (current_target_state.temp_delta > MAX_TARGET_TEMP_DELTA 
+        || current_target_state.temp_delta < MIN_TARGET_TEMP_DELTA) current_target_state.temp_delta = SELF_HEATING_TEMP_DELTA;
 
-  if (current_target_state.mode > 1 ) current_target_state.mode = 1;
+    if (current_target_state.mode > 1 ) current_target_state.mode = 0;
 
-  if (current_target_state.hum < MIN_TARGET_HUMIDITY 
-      || current_target_state.hum > MAX_TARGET_HUMIDITY ) current_target_state.hum = target_humidity;
+    if (current_target_state.hum < MIN_TARGET_HUMIDITY 
+        || current_target_state.hum > MAX_TARGET_HUMIDITY ) current_target_state.hum = target_humidity;
 
-  if (current_target_state.temp < MIN_TARGET_TEMP 
-      || current_target_state.temp > MAX_TARGET_TEMP ) current_target_state.temp = target_temp;
+    if (current_target_state.temp < MIN_TARGET_TEMP 
+        || current_target_state.temp > MAX_TARGET_TEMP ) current_target_state.temp = target_temp;
+  }
   
   config.record = current_target_state;
 
@@ -184,7 +194,7 @@ void setup() {
 
 void loop() {
 
-  delay(750);
+  delay(1000);
   digitalWrite(LED1, HIGH);
 
   // check mode button state
@@ -311,7 +321,7 @@ void loop() {
   };
   //===========================================================================
 
-  delay(750);
+  delay(1000);
   digitalWrite(LED1, LOW);
 
   if (pass_adc_reading_cycles == 0) {
