@@ -71,7 +71,12 @@ union config_word {
   uint32_t      in_buffer_format;
 } config;
 
-FlashBuffer memory;
+// Init EEPROM memory emulator
+#define EEPROM_START_ADDRESS    ((uint32_t)0x08008400) // EEPROM emulation start address from 33KByte of Flash memory
+#define EEPROM_NUMBER_OF_PAGES  30                     // number of pages that are involved in buffer
+#define SIZE_OF_STORED_ARRAY 1
+uint32_t configArrayBuffer[SIZE_OF_STORED_ARRAY];      // config buffer array
+FlashBuffer memory( EEPROM_START_ADDRESS, EEPROM_NUMBER_OF_PAGES, SIZE_OF_STORED_ARRAY); // init memory buffer
 
 byte monitor_mode = 0;
 int pass_adc_reading_cycles = 30;
@@ -110,10 +115,9 @@ int convert_ADC_to_PPM(int ADC_value){
 
 void setup() {
   
-  // get stored config from flash memory
-  // memory.eraseMemory();
-
-  config.in_buffer_format = memory.readWord();
+  // read config word from memory
+  memory.readDataWordArray(configArrayBuffer);
+  config.in_buffer_format = configArrayBuffer[0];
   
   // check if values from flash memory storage are correct
   if (config.in_buffer_format == 0xFFFFFFFF) {
@@ -136,10 +140,11 @@ void setup() {
   }
   
   config.record = current_target_state;
-
+  
   // Write default config if data is not equal
-  if (config.in_buffer_format != memory.readWord()) {
-    memory.writeWord(config.in_buffer_format);
+  if (config.in_buffer_format != configArrayBuffer[0]) {
+    configArrayBuffer[0] = config.in_buffer_format;
+    memory.writeDataWordArray(configArrayBuffer);
   };
 
   // Set global parameters
@@ -214,9 +219,12 @@ void loop() {
       screen1.print("Heater:--- Water:---");
     };
   };
-        
+
+  // read config word from flash memory
+  memory.readDataWordArray(configArrayBuffer);
+  config.in_buffer_format = configArrayBuffer[0];
+
   // Check if config was changhed by user
-  config.in_buffer_format = memory.readWord();
   if (current_target_state.temp_delta != config.record.temp_delta
       || current_target_state.mode != config.record.mode 
       || current_target_state.temp != config.record.temp
@@ -224,7 +232,8 @@ void loop() {
         
     //save new config to flash memory
     config.record = current_target_state;
-    memory.writeWord(config.in_buffer_format);
+    configArrayBuffer[0] = config.in_buffer_format;
+    memory.writeDataWordArray(configArrayBuffer);
   };
 
   heater.tic_tac();

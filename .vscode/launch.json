@@ -1,5 +1,5 @@
 // AUTOMATICALLY GENERATED FILE. PLEASE DO NOT MODIFY IT MANUALLY
-
+//
 // PIO Unified Debugger
 //
 // Documentation: https://docs.platformio.org/page/plus/debugging.html
@@ -15,12 +15,12 @@
             "executable": "/home/user/Documents/stm32f103c8_LCD_climatizer_PlatformIO/.pio/build/bluepill_f103c8/firmware.elf",
             "projectEnvName": "bluepill_f103c8",
             "toolchainBinDir": "/home/user/.platformio/packages/toolchain-gccarmnoneeabi/bin",
+            "internalConsoleOptions": "openOnSessionStart",
             "svdPath": "/home/user/.platformio/platforms/ststm32/misc/svd/STM32F103xx.svd",
             "preLaunchTask": {
                 "type": "PlatformIO",
                 "task": "Pre-Debug"
-            },
-            "internalConsoleOptions": "openOnSessionStart"
+            }
         },
         {
             "type": "platformio-debug",
@@ -29,8 +29,8 @@
             "executable": "/home/user/Documents/stm32f103c8_LCD_climatizer_PlatformIO/.pio/build/bluepill_f103c8/firmware.elf",
             "projectEnvName": "bluepill_f103c8",
             "toolchainBinDir": "/home/user/.platformio/packages/toolchain-gccarmnoneeabi/bin",
-            "svdPath": "/home/user/.platformio/platforms/ststm32/misc/svd/STM32F103xx.svd",
-            "internalConsoleOptions": "openOnSessionStart"
+            "internalConsoleOptions": "openOnSessionStart",
+            "svdPath": "/home/user/.platformio/platforms/ststm32/misc/svd/STM32F103xx.svd"
         }
     ]
 }
