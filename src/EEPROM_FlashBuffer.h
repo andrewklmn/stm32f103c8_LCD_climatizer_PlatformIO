@@ -21,7 +21,7 @@
  *    #define SIZE_OF_STORED_ARRAY 255                       //  255 is max size due to memory page size
  * 
  *    uint32_t configArrayBuffer[SIZE_OF_STORED_ARRAY];      // config buffer array
- *    FlashBuffer memory( EEPROM_START_ADDRESS, EEPROM_NUMBER_OF_PAGES, SIZE_OF_STORED_ARRAY); // init memory buffer
+ *    EEPROM_FlashBuffer memory( EEPROM_START_ADDRESS, EEPROM_NUMBER_OF_PAGES, SIZE_OF_STORED_ARRAY); // init memory buffer
  *
  * 
  *  Reading data from flash memory to buffer array:
@@ -41,12 +41,14 @@ public:
   virtual ~EEPROM_FlashBuffer();
   void readDataWordArray(uint32_t dataArray[]);
   void writeDataWordArray(uint32_t dataArray[]);
+  void eraseMemory();
 private:
   uint32_t bufferStartAddress;
+  int dataArrayLength;
+  int nextPositionStep;
   int bufferSizeInPages;
   int currentPageIndex;
-  int dataLength;
-  void eraseMemory();
+  int currentPositionIndex;
   uint32_t readEEPROMWord(int page, int position);
 };
 
