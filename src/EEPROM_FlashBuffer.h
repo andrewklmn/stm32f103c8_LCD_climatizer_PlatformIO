@@ -41,12 +41,12 @@ public:
   virtual ~EEPROM_FlashBuffer();
   void readDataWordArray(uint32_t dataArray[]);
   void writeDataWordArray(uint32_t dataArray[]);
+  void eraseMemory();
 private:
   uint32_t bufferStartAddress;
   int bufferSizeInPages;
   int currentPageIndex;
   int dataLength;
-  void eraseMemory();
   uint32_t readEEPROMWord(int page, int position);
 };
 

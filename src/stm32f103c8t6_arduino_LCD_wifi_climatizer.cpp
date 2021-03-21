@@ -25,9 +25,9 @@
 // ============================ setting of initial target values ==============
 #if LOCATION==LIVING_ROOM
   // FOR RED ONE - big - hall
-  byte target_temp = 22;
+  byte target_temp = 19;
   byte target_humidity = 49;
-  byte comfort_temp = 20;
+  byte comfort_temp = 17;
 #else
   // FOR GREEN ONE - small - bedroom and YELLOW bedroom
   byte target_temp = 22;
@@ -114,6 +114,16 @@ int convert_ADC_to_PPM(int ADC_value){
 };
 
 void setup() {
+
+  // ========================================================================================
+  // If you want to change default setup you have to:
+  // 1) uncomment this line and run firmware once on device for full erasing previous setup
+  //               |
+  //               V
+  // memory.eraseMemory();
+  //
+  // 2) After that comment this line and upload new firmware 
+  //=========================================================================================
   
   // read config word from memory
   memory.readDataWordArray(configArrayBuffer);
