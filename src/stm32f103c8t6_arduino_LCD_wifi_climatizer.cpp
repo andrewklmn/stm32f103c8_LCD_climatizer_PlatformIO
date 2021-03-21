@@ -73,8 +73,8 @@ union config_word {
 
 // Init EEPROM memory emulator
 #define EEPROM_START_ADDRESS    ((uint32_t)0x08008400) // EEPROM emulation start address from 33KByte of Flash memory
-#define EEPROM_NUMBER_OF_PAGES  3                      // number of pages that are involved in buffer
-#define SIZE_OF_STORED_ARRAY 127
+#define EEPROM_NUMBER_OF_PAGES  30                     // number of pages that are involved in buffer
+#define SIZE_OF_STORED_ARRAY 1
 uint32_t configArrayBuffer[SIZE_OF_STORED_ARRAY];      // config buffer array
 EEPROM_FlashBuffer memory( EEPROM_START_ADDRESS, EEPROM_NUMBER_OF_PAGES, SIZE_OF_STORED_ARRAY); // init memory buffer
 
@@ -115,8 +115,6 @@ int convert_ADC_to_PPM(int ADC_value){
 
 void setup() {
   
-  memory.eraseMemory();
-
   // read config word from memory
   memory.readDataWordArray(configArrayBuffer);
   config.in_buffer_format = configArrayBuffer[0];
@@ -146,7 +144,6 @@ void setup() {
   // Write default config if data is not equal
   if (config.in_buffer_format != configArrayBuffer[0]) {
     configArrayBuffer[0] = config.in_buffer_format;
-    configArrayBuffer[126] = 0x88888888;
     memory.writeDataWordArray(configArrayBuffer);
   };
 
@@ -236,7 +233,7 @@ void loop() {
     //save new config to flash memory
     config.record = current_target_state;
     configArrayBuffer[0] = config.in_buffer_format;
-    //memory.writeDataWordArray(configArrayBuffer);
+    memory.writeDataWordArray(configArrayBuffer);
   };
 
   heater.tic_tac();
