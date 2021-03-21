@@ -1,8 +1,8 @@
 #include <stdint.h>
 #include "stm32f1xx_hal.h"
-#include "eeprom_flash.h"
+#include "EEPROM_FlashBuffer.h"
 
-FlashBuffer::FlashBuffer(uint32_t startAddress, int numberOfPages, int dataArrayLength) {
+EEPROM_FlashBuffer::EEPROM_FlashBuffer(uint32_t startAddress, int numberOfPages, int dataArrayLength) {
     bufferStartAddress = startAddress;
     bufferSizeInPages = numberOfPages;
     currentPageIndex = 0;
@@ -19,16 +19,16 @@ FlashBuffer::FlashBuffer(uint32_t startAddress, int numberOfPages, int dataArray
     }
 }
 
-FlashBuffer::~FlashBuffer() {
+EEPROM_FlashBuffer::~EEPROM_FlashBuffer() {
 }
 
-void FlashBuffer::readDataWordArray(uint32_t dataArray[]) {
+void EEPROM_FlashBuffer::readDataWordArray(uint32_t dataArray[]) {
   for (int i = 0; i < dataLength; i++) {
     dataArray[i] = readEEPROMWord(currentPageIndex, i + 1);
   }
 }
 
-void FlashBuffer::writeDataWordArray(uint32_t dataArray[]) {
+void EEPROM_FlashBuffer::writeDataWordArray(uint32_t dataArray[]) {
   if (currentPageIndex < bufferSizeInPages - 1 ) {
     // check if it is first write
     if (currentPageIndex == 0 && readEEPROMWord(0, 0) == 0xFFFFFFFF) {
@@ -54,7 +54,7 @@ void FlashBuffer::writeDataWordArray(uint32_t dataArray[]) {
   HAL_FLASH_Lock();
 }
 
-void FlashBuffer::eraseMemory() {
+void EEPROM_FlashBuffer::eraseMemory() {
   uint32_t PAGEError = 0;
   FLASH_EraseInitTypeDef EraseInitStruct;
   EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
@@ -66,7 +66,7 @@ void FlashBuffer::eraseMemory() {
   currentPageIndex = 0;
 }
 
-uint32_t FlashBuffer::readEEPROMWord(int page, int position) {
+uint32_t EEPROM_FlashBuffer::readEEPROMWord(int page, int position) {
   uint32_t address  = bufferStartAddress 
                       + page * EEPROM_WORDS_IN_PAGE * EEPROM_WORD_SIZE  // current page address
                       + position * EEPROM_WORD_SIZE;  // current position address

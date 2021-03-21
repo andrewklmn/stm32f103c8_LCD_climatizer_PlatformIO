@@ -1,5 +1,5 @@
-#ifndef __EEPROM_FLASH_H
-#define __EEPROM_FLASH_H
+#ifndef __EEPROM_FLASH_BUFFER_H
+#define __EEPROM_FLASH_BUFFER_H
 
 #include <stdint.h>
 #include "stm32f1xx_hal.h"
@@ -25,19 +25,20 @@
  *
  * 
  *  Reading data from flash memory to buffer array:
- *     memory.readDataWordArray(dataBufferArray, SIZE_OF_STORED_ARRAY);
+ *     memory.readDataWordArray(dataBufferArray);
+ * 
  *  Writing data from buffer array to flash memory:
- *     memory.writeDataWordArray(dataBufferArray, SIZE_OF_STORED_ARRAY);
+ *     memory.writeDataWordArray(dataBufferArray);
  */
 
 #define EEPROM_WORDS_IN_PAGE    256                     // number of words in memory page
 #define EEPROM_WORD_SIZE        4                       // number of bytes in one word
 
-class FlashBuffer
+class EEPROM_FlashBuffer
 {
 public:
-  FlashBuffer(uint32_t startAddress, int numberOfPages, int dataArrayLength);
-  virtual ~FlashBuffer();
+  EEPROM_FlashBuffer(uint32_t startAddress, int numberOfPages, int dataArrayLength);
+  virtual ~EEPROM_FlashBuffer();
   void readDataWordArray(uint32_t dataArray[]);
   void writeDataWordArray(uint32_t dataArray[]);
 private:

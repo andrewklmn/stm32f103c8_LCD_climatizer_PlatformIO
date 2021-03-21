@@ -10,7 +10,7 @@
 #include "LiquidCrystal_I2C.h"
 #include "Value_stack.h"
 #include "On_off_driver.h"
-#include "eeprom_flash.h"
+#include "EEPROM_FlashBuffer.h"
 #include "pin_definition.h"
 
 #if LOCATION==LIVING_ROOM
@@ -76,7 +76,7 @@ union config_word {
 #define EEPROM_NUMBER_OF_PAGES  30                     // number of pages that are involved in buffer
 #define SIZE_OF_STORED_ARRAY 1
 uint32_t configArrayBuffer[SIZE_OF_STORED_ARRAY];      // config buffer array
-FlashBuffer memory( EEPROM_START_ADDRESS, EEPROM_NUMBER_OF_PAGES, SIZE_OF_STORED_ARRAY); // init memory buffer
+EEPROM_FlashBuffer memory( EEPROM_START_ADDRESS, EEPROM_NUMBER_OF_PAGES, SIZE_OF_STORED_ARRAY); // init memory buffer
 
 byte monitor_mode = 0;
 int pass_adc_reading_cycles = 30;
