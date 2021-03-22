@@ -121,7 +121,7 @@ void setup() {
   // 1) uncomment this line and run firmware once on device for full erasing previous setup
   //               |
   //               V
-  // memory.eraseMemory();
+  // memory.clearBuffer();
   //
   // 2) After that comment this line and upload new firmware 
   //=========================================================================================
@@ -138,8 +138,13 @@ void setup() {
     current_target_state.temp = target_temp;
   } else {
     current_target_state = config.record;
+    // TODO -> uncomment back this check temp_delta range on startup
+    // when 4-button mode will be implemented
+    /*
     if (current_target_state.temp_delta > MAX_TARGET_TEMP_DELTA 
-        || current_target_state.temp_delta < MIN_TARGET_TEMP_DELTA) current_target_state.temp_delta = SELF_HEATING_TEMP_DELTA;
+        || current_target_state.temp_delta < MIN_TARGET_TEMP_DELTA)
+    */
+    current_target_state.temp_delta = SELF_HEATING_TEMP_DELTA;
 
     if (current_target_state.mode > 1 ) current_target_state.mode = 0;
 
