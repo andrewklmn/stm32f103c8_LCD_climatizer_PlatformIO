@@ -2,73 +2,97 @@
 #include "stm32f1xx_hal.h"
 #include "EEPROM_FlashBuffer.h"
 
-EEPROM_FlashBuffer::EEPROM_FlashBuffer(uint32_t startAddress, int numberOfPages, int dataArrayLength) {
-    bufferStartAddress = startAddress;
-    bufferSizeInPages = numberOfPages;
-    currentPageIndex = 0;
-    dataLength = dataArrayLength;
+EEPROM_FlashBuffer::EEPROM_FlashBuffer(uint32_t startAddress, int numberOfPages, int arrayLength)
+{
+  bufferStartAddress = startAddress;
+  numberOfBufferPages = numberOfPages;
+  bufferLengthInWords = numberOfPages * EEPROM_WORDS_IN_PAGE;
+  dataArrayLengthInWords = arrayLength;
+  recordLengthInWords = arrayLength + 1;
+  nextWriteWordIndex = 0;
 
-    // try to find current used page
-    for (int i = 0; i < bufferSizeInPages; i++) {
-      // check first busy marker word in page for understanding if this page is not used
-      if(readEEPROMWord(i, 0) == 0xFFFFFFFF) {
-        // empty page is found... stop this search
-        break;
-      };
-      currentPageIndex = i;  //this page contain stored array
-    }
-}
-
-EEPROM_FlashBuffer::~EEPROM_FlashBuffer() {
-}
-
-void EEPROM_FlashBuffer::readDataWordArray(uint32_t dataArray[]) {
-  for (int i = 0; i < dataLength; i++) {
-    dataArray[i] = readEEPROMWord(currentPageIndex, i + 1);
+  // find first empty word index
+  for (int i = 0; i < bufferLengthInWords; i += recordLengthInWords)
+  {
+    if (readEEPROMWord(i) == 0xFFFFFFFF)
+    { // buffer is empty
+      nextWriteWordIndex = i;
+      break;
+    };
   }
 }
 
-void EEPROM_FlashBuffer::writeDataWordArray(uint32_t dataArray[]) {
-  if (currentPageIndex < bufferSizeInPages - 1 ) {
-    // check if it is first write
-    if (currentPageIndex == 0 && readEEPROMWord(0, 0) == 0xFFFFFFFF) {
-      // will write to the first page 
-    } else {
-      // will write to next page
-      currentPageIndex++;
+EEPROM_FlashBuffer::~EEPROM_FlashBuffer()
+{
+}
+
+void EEPROM_FlashBuffer::readArray(uint32_t dataArray[])
+{
+  if (nextWriteWordIndex == 0)
+  { // fill array with zero because it was not initialized
+    for (int i = 0; i < dataArrayLengthInWords; i++)
+    {
+      dataArray[i] = 0;
     }
-  } else {
-    // last memory page is used!
-    // erase all pages and start new page writing cycle from first page
+  }
+  else
+  { // fill array with last stored data
+    for (int i = 0; i < dataArrayLengthInWords; i++)
+    {
+      dataArray[i] = readEEPROMWord(nextWriteWordIndex - recordLengthInWords + 1 + i);
+    }
+  }
+}
+
+void EEPROM_FlashBuffer::writeArray(uint32_t dataArray[])
+{
+  bool erasingIsNeeded = false;
+
+  if (nextWriteWordIndex > bufferLengthInWords - recordLengthInWords)
+  {
+    nextWriteWordIndex = 0;
+    erasingIsNeeded = true;
+  }
+
+  HAL_FLASH_Unlock();
+  if (erasingIsNeeded)
+  {
     eraseMemory();
-  };
-
-  uint32_t address = bufferStartAddress + currentPageIndex * EEPROM_WORDS_IN_PAGE * EEPROM_WORD_SIZE;
-
-  HAL_FLASH_Unlock();
-  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address, 0); // write first service marker word
-  for (int i = 0; i < dataLength; i++) {
-    address += EEPROM_WORD_SIZE;                                      // add current position address
-    HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address, dataArray[i]); // write data word
+  }
+  uint32_t address = bufferStartAddress + nextWriteWordIndex * EEPROM_WORD_SIZE;
+  // write service marker word before array data
+  HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address, ((uint64_t)nextWriteWordIndex));
+  // write array data after service marker word
+  for (int i = 0; i < dataArrayLengthInWords; i++)
+  {
+    address += EEPROM_WORD_SIZE;
+    HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address, (uint64_t)dataArray[i]);
   };
   HAL_FLASH_Lock();
+
+  nextWriteWordIndex += recordLengthInWords;
 }
 
-void EEPROM_FlashBuffer::eraseMemory() {
-  uint32_t PAGEError = 0;
-  FLASH_EraseInitTypeDef EraseInitStruct;
-  EraseInitStruct.TypeErase   = FLASH_TYPEERASE_PAGES;
-  EraseInitStruct.PageAddress = bufferStartAddress;
-  EraseInitStruct.NbPages     = bufferSizeInPages;
+void EEPROM_FlashBuffer::eraseMemory()
+{
+  FLASH_EraseInitTypeDef f;
+  f.TypeErase = FLASH_TYPEERASE_PAGES;
+  f.PageAddress = bufferStartAddress;
+  f.NbPages = numberOfBufferPages;
+  uint32_t PageError = 0;
+  HAL_FLASHEx_Erase(&f, &PageError);
+}
+
+void EEPROM_FlashBuffer::clearBuffer()
+{
   HAL_FLASH_Unlock();
-  HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError);
+  eraseMemory();
   HAL_FLASH_Lock();
-  currentPageIndex = 0;
+  
 }
 
-uint32_t EEPROM_FlashBuffer::readEEPROMWord(int page, int position) {
-  uint32_t address  = bufferStartAddress 
-                      + page * EEPROM_WORDS_IN_PAGE * EEPROM_WORD_SIZE  // current page address
-                      + position * EEPROM_WORD_SIZE;  // current position address
-  return *(__IO uint32_t*)address;
+uint32_t EEPROM_FlashBuffer::readEEPROMWord(int wordIndex)
+{
+  uint32_t address = bufferStartAddress + wordIndex * EEPROM_WORD_SIZE; // add word address
+  return *(__IO uint32_t *)address;
 }

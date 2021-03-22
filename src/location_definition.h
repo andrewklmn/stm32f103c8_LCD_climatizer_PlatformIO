@@ -7,7 +7,7 @@
 //================ here you can set the current location of device =============
 // #define LOCATION LIVING_ROOM
 // #define LOCATION BEDROOM
-#define LOCATION YELLOW_BEDROOM
+#define LOCATION LIVING_ROOM
 //==============================================================================
 
 #endif /* LOCATION_DEFINITION_H */
