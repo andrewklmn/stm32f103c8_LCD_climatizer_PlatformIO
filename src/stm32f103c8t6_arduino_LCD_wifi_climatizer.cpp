@@ -121,7 +121,7 @@ void setup() {
   // 1) uncomment this line and run firmware once on device for full erasing previous setup
   //               |
   //               V
-  //memory.clearBuffer();
+  // memory.clearBuffer();
   //
   // 2) After that comment this line and upload new firmware 
   //=========================================================================================
